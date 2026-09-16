@@ -18,20 +18,21 @@ import { uploadToSupabaseStorage } from './utils/supabase';
 
 const DEFAULT_CONFIG: SecurityConfig = {
   deviceId: 'Phone_01',
-  supabaseUrl: '',
-  supabaseAnonKey: '',
-  supabaseBucket: 'security-photos',
+  supabaseUrl: 'https://nchosqdrzsphqnmrosfr.supabase.co',
+  supabaseAnonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5jaG9zcWRyenNwaHFubXJvc2ZyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk1MzU1NTEsImV4cCI6MjEwNTExMTU1MX0.BnLxYZyLXxYLzF9PN7KBoLvoDvp-WLI5Qh2--XH9oeE',
+  supabaseBucket: 'healthy',
   testMode: false,
 };
 
 export default function App() {
   // --- Persistent Configuration ---
   const [config, setConfig] = useState<SecurityConfig>(() => {
+    const storedBucket = localStorage.getItem('sec_supabase_bucket');
     return {
       deviceId: localStorage.getItem('sec_device_id') || DEFAULT_CONFIG.deviceId,
       supabaseUrl: localStorage.getItem('sec_supabase_url') || DEFAULT_CONFIG.supabaseUrl,
       supabaseAnonKey: localStorage.getItem('sec_supabase_anon_key') || DEFAULT_CONFIG.supabaseAnonKey,
-      supabaseBucket: localStorage.getItem('sec_supabase_bucket') || DEFAULT_CONFIG.supabaseBucket,
+      supabaseBucket: (storedBucket && storedBucket !== 'security-photos') ? storedBucket : DEFAULT_CONFIG.supabaseBucket,
       testMode: localStorage.getItem('sec_test_mode') === 'true',
     };
   });
@@ -160,11 +161,8 @@ export default function App() {
 
     try {
       // ----------------------------------------------------
-      // 1. Photo #1: Immediate snapshot
+      // 1. Photo #1: Immediate snapshot (Zero flash/torch, silent canvas)
       // ----------------------------------------------------
-      setIsFlashing(true);
-      setTimeout(() => setIsFlashing(false), 120);
-
       const shot1 = await captureSilentCanvasFrame(videoRef.current, 0.92);
       const path1 = generatePhotoStoragePath(deviceId, fileTimestamp, 1);
 
@@ -224,11 +222,9 @@ export default function App() {
       await new Promise((resolve) => setTimeout(resolve, 2000));
 
       // ----------------------------------------------------
-      // 3. Photo #2: Consecutive snapshot (+2 seconds)
+      // 3. Photo #2: Consecutive snapshot (+2 seconds, silent canvas)
       // ----------------------------------------------------
       setCycleStatusText('Capturing Photo #2 (+2s)...');
-      setIsFlashing(true);
-      setTimeout(() => setIsFlashing(false), 120);
 
       const shot2 = await captureSilentCanvasFrame(videoRef.current, 0.92);
       const path2 = generatePhotoStoragePath(deviceId, fileTimestamp, 2);

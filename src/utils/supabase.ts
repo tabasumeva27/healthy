@@ -5,6 +5,12 @@ export interface UploadResult {
   statusCode?: number;
 }
 
+export function normalizeSupabaseUrl(url: string): string {
+  let clean = url.trim().replace(/\/+$/, '');
+  clean = clean.replace(/\/rest\/v1\/?$/i, '');
+  return clean;
+}
+
 /**
  * Uploads a Blob directly to Supabase Storage using standard REST API
  * Path format: {device_id}/photo_{timestamp}_{index}.jpg
@@ -23,11 +29,11 @@ export async function uploadToSupabaseStorage(
     };
   }
 
-  const cleanUrl = supabaseUrl.trim().replace(/\/+$/, '');
+  const cleanUrl = normalizeSupabaseUrl(supabaseUrl);
   const cleanBucket = bucketName.trim();
   const cleanPath = path.trim().replace(/^\/+/, '');
 
-  // Supabase Storage REST endpoint
+  // Supabase Storage REST endpoint: {origin}/storage/v1/object/{bucket}/{path}
   const endpoint = `${cleanUrl}/storage/v1/object/${encodeURIComponent(cleanBucket)}/${cleanPath}`;
 
   try {
@@ -89,7 +95,7 @@ export async function testSupabaseConnection(
     return { ok: false, message: 'Please provide Supabase URL, Anon Key, and Bucket Name.' };
   }
 
-  const cleanUrl = supabaseUrl.trim().replace(/\/+$/, '');
+  const cleanUrl = normalizeSupabaseUrl(supabaseUrl);
   const cleanBucket = bucketName.trim();
 
   try {

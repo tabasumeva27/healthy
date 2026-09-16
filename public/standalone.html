@@ -1,9 +1,12 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="dark">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Security Monitor - Standalone HTML</title>
+  <title>Security Monitor</title>
+  <meta name="description" content="Automated smartphone security monitor using front camera and cloud storage.">
+  <meta property="og:title" content="Security Monitor">
+  <meta property="og:description" content="Automated smartphone security monitor using front camera and cloud storage.">
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
@@ -11,548 +14,757 @@
       theme: {
         extend: {
           colors: {
-            brand: { 500: '#10b981', 600: '#059669' }
+            slate: {
+              950: '#020617'
+            }
           }
         }
       }
     }
   </script>
   <style>
-    body { background-color: #090d16; color: #f1f5f9; font-family: system-ui, -apple-system, sans-serif; }
-    .hud-corner {
-      position: absolute; width: 14px; height: 14px;
-      border-color: rgba(16, 185, 129, 0.7);
-    }
-    .hud-tl { top: 12px; left: 12px; border-top: 2px solid; border-left: 2px solid; }
-    .hud-tr { top: 12px; right: 12px; border-top: 2px solid; border-right: 2px solid; }
-    .hud-bl { bottom: 12px; left: 12px; border-bottom: 2px solid; border-left: 2px solid; }
-    .hud-br { bottom: 12px; right: 12px; border-bottom: 2px solid; border-right: 2px solid; }
-    @keyframes pulse-red {
-      0%, 100% { opacity: 1; transform: scale(1); }
-      50% { opacity: 0.4; transform: scale(0.92); }
-    }
-    .pulse-dot { animation: pulse-red 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+    /* Custom scrollbars and transitions */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #0f172a; }
+    ::-webkit-scrollbar-thumb { background: #334155; border-radius: 9999px; }
+    ::-webkit-scrollbar-thumb:hover { background: #475569; }
+    .mirror-video { transform: scaleX(-1); }
   </style>
 </head>
-<body class="min-h-screen bg-slate-950 text-slate-100 flex flex-col antialiased selection:bg-emerald-500 selection:text-white">
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col antialiased selection:bg-emerald-500 selection:text-white font-sans">
 
-  <!-- Header -->
-  <header class="border-b border-slate-800/80 bg-slate-900/90 backdrop-blur px-4 py-3 sticky top-0 z-30 flex items-center justify-between">
-    <div class="flex items-center gap-3">
-      <div class="w-3 h-3 rounded-full bg-emerald-500 shadow-[0_0_10px_#10b981]"></div>
-      <div>
-        <h1 class="font-bold text-base tracking-tight text-white flex items-center gap-2">
-          Security Monitor
-          <span class="text-[10px] uppercase font-mono px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">Front Cam</span>
-        </h1>
-        <p class="text-xs text-slate-400">Automated Smartphone Surveillance</p>
+  <!-- TOP HEADER -->
+  <header class="border-b border-slate-800/80 bg-slate-900/90 backdrop-blur sticky top-0 z-30 px-4 py-3 sm:px-6">
+    <div class="max-w-7xl mx-auto flex items-center justify-between gap-4">
+      <div class="flex items-center gap-2.5">
+        <div class="w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+          </svg>
+        </div>
+        <div>
+          <h1 class="text-sm font-semibold tracking-tight text-white flex items-center gap-2">
+            Security Monitor
+            <span id="header-status-badge" class="text-[10px] uppercase font-mono px-2 py-0.5 rounded bg-slate-800 text-slate-400 border border-slate-700">STANDBY</span>
+          </h1>
+          <p class="text-[11px] text-slate-400">Silent Surveillance & Cloud Upload</p>
+        </div>
       </div>
-    </div>
-    <div id="wakeLockBadge" class="hidden sm:flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full bg-slate-800 text-slate-400 border border-slate-700/50">
-      <span class="w-2 h-2 rounded-full bg-amber-400"></span>
-      <span id="wakeLockText">Wake Lock: Off</span>
+
+      <!-- Device Badge & WakeLock Indicator -->
+      <div class="flex items-center gap-2 text-xs">
+        <div id="wakelock-pill" class="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-800/80 border border-slate-700/60 text-slate-400 font-mono text-[11px]">
+          <span id="wakelock-dot" class="w-2 h-2 rounded-full bg-slate-500"></span>
+          <span id="wakelock-label">Screen Sleep: Normal</span>
+        </div>
+        <div class="px-2.5 py-1 rounded-full bg-slate-800 border border-slate-700 text-slate-300 font-mono text-xs">
+          ID: <span id="header-device-name" class="text-emerald-400 font-semibold">Phone_01</span>
+        </div>
+      </div>
     </div>
   </header>
 
-  <main class="flex-1 max-w-6xl w-full mx-auto p-4 sm:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
+  <!-- MAIN DASHBOARD CONTENT -->
+  <main class="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
 
-    <!-- Left Column: Video & Countdown (7 cols) -->
-    <div class="lg:col-span-7 flex flex-col gap-5">
-      <!-- Live Camera Stream Preview Box -->
-      <div class="bg-slate-900/80 border border-slate-800 rounded-2xl p-4 shadow-xl relative overflow-hidden flex flex-col">
-        <div class="flex items-center justify-between mb-3">
+    <!-- LEFT COLUMN: CAMERA & COUNTDOWN (7 Cols) -->
+    <div class="lg:col-span-7 flex flex-col gap-6 w-full">
+
+      <!-- CAMERA VIEWFINDER CARD -->
+      <div class="bg-slate-900/80 border border-slate-800 rounded-2xl p-4 sm:p-5 shadow-xl relative flex flex-col">
+        <!-- Live Status Bar -->
+        <div class="flex items-center justify-between mb-3 text-xs font-mono">
           <div class="flex items-center gap-2">
-            <span id="recIndicator" class="hidden flex items-center gap-1.5 text-xs font-mono font-medium text-rose-400 bg-rose-500/10 px-2 py-0.5 rounded border border-rose-500/20">
-              <span class="w-2 h-2 rounded-full bg-rose-500 pulse-dot"></span> LIVE FEED
+            <span id="stream-status" class="flex items-center gap-1.5 text-slate-400">
+              <span class="w-2 h-2 rounded-full bg-slate-600"></span>
+              STANDBY
             </span>
-            <span class="text-xs font-mono text-slate-400">Stream: <span id="cameraStatusText" class="text-slate-200">Standby</span></span>
+            <span class="text-slate-500">|</span>
+            <span class="text-slate-400">Front Cam (<span class="text-slate-200">user</span>)</span>
           </div>
-          <span id="resBadge" class="text-[11px] font-mono px-2 py-0.5 bg-slate-800 rounded text-slate-400">-- x --</span>
+          <div class="flex items-center gap-2">
+            <span id="capture-badge" class="hidden text-[11px] px-2 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20 animate-pulse">
+              Silent Capturing...
+            </span>
+            <span id="resolution-badge" class="text-[11px] px-2 py-0.5 bg-slate-800 rounded text-slate-400 border border-slate-700/60">
+              1920x1080
+            </span>
+          </div>
         </div>
 
-        <!-- Video Viewfinder Frame -->
-        <div class="relative w-full aspect-[4/3] bg-black rounded-xl overflow-hidden border border-slate-800 flex items-center justify-center">
-          <div class="hud-corner hud-tl"></div>
-          <div class="hud-corner hud-tr"></div>
-          <div class="hud-corner hud-bl"></div>
-          <div class="hud-corner hud-br"></div>
+        <!-- Video Box with HUD Corners -->
+        <div class="relative w-full aspect-[4/3] bg-black rounded-xl overflow-hidden border border-slate-800 flex items-center justify-center shadow-inner">
+          <!-- Crosshairs corners -->
+          <div class="absolute top-3 left-3 w-3.5 h-3.5 border-t-2 border-l-2 border-emerald-500/70 z-10 pointer-events-none"></div>
+          <div class="absolute top-3 right-3 w-3.5 h-3.5 border-t-2 border-r-2 border-emerald-500/70 z-10 pointer-events-none"></div>
+          <div class="absolute bottom-3 left-3 w-3.5 h-3.5 border-b-2 border-l-2 border-emerald-500/70 z-10 pointer-events-none"></div>
+          <div class="absolute bottom-3 right-3 w-3.5 h-3.5 border-b-2 border-r-2 border-emerald-500/70 z-10 pointer-events-none"></div>
 
-          <video id="cameraVideo" playsinline autoplay muted class="w-full h-full object-cover transform -scale-x-100 hidden"></video>
+          <!-- Video feed (Mirrored) -->
+          <video id="camera-video" playsinline autoplay muted class="mirror-video w-full h-full object-cover hidden"></video>
 
-          <!-- Standby Overlay -->
-          <div id="cameraPlaceholder" class="flex flex-col items-center justify-center p-6 text-center max-w-sm">
-            <div class="w-14 h-14 rounded-full bg-slate-800/80 border border-slate-700 flex items-center justify-center mb-3 text-slate-400">
-              <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+          <!-- Inactive Placeholder -->
+          <div id="camera-placeholder" class="flex flex-col items-center justify-center p-6 text-center max-w-sm z-10">
+            <div class="w-16 h-16 rounded-2xl bg-slate-800/80 border border-slate-700 flex items-center justify-center mb-4 text-emerald-400 shadow-lg">
+              <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+              </svg>
             </div>
-            <h3 class="text-sm font-semibold text-slate-200">Front Camera Inactive</h3>
-            <p class="text-xs text-slate-400 mt-1">Click the <strong class="text-emerald-400 font-medium">"View"</strong> button below to initialize the camera stream, request Screen Wake Lock, and start automated monitoring.</p>
+            <h3 class="text-base font-semibold text-white tracking-tight">Camera Feed Inactive</h3>
+            <p class="text-xs text-slate-400 mt-1.5 leading-relaxed">
+              Click the primary <strong class="text-emerald-400">"View"</strong> button below to open the front camera, lock screen sleep, and start automated silent captures.
+            </p>
           </div>
-
-          <!-- Flash Notification Overlay -->
-          <div id="flashOverlay" class="absolute inset-0 bg-white/25 pointer-events-none opacity-0 transition-opacity duration-150"></div>
         </div>
 
-        <!-- Primary Action Button with EXACT label "View" -->
+        <!-- PRIMARY BUTTONS BAR -->
         <div class="mt-4 flex flex-wrap gap-3 items-center">
-          <button id="viewBtn" class="flex-1 py-3 px-6 rounded-xl font-semibold text-sm bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white shadow-lg shadow-emerald-950/40 transition-all flex items-center justify-center gap-2 cursor-pointer">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
+          <!-- PRIMARY BUTTON STRICTLY LABELED "View" -->
+          <button id="view-btn" onclick="startSurveillance()" class="flex-1 py-3.5 px-6 rounded-xl font-semibold text-sm bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white shadow-lg shadow-emerald-950/40 transition-all flex items-center justify-center gap-2 cursor-pointer focus:outline-none focus:ring-2 focus:ring-emerald-400/50">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+            </svg>
             <span>View</span>
           </button>
-          <button id="stopBtn" class="hidden py-3 px-4 rounded-xl font-medium text-sm bg-slate-800 hover:bg-rose-950/50 hover:text-rose-400 hover:border-rose-800/50 text-slate-300 border border-slate-700 transition-all cursor-pointer">
-            Stop Monitoring
-          </button>
-          <button id="snapNowBtn" disabled class="py-3 px-4 rounded-xl font-medium text-sm bg-slate-800 hover:bg-slate-700 text-slate-400 disabled:opacity-50 disabled:pointer-events-none border border-slate-700 transition-all cursor-pointer">
-            Capture Now
-          </button>
+
+          <!-- Stop and Snap Now Buttons (Visible when active) -->
+          <div id="active-controls" class="hidden flex-1 flex gap-3">
+            <button id="stop-btn" onclick="stopSurveillance()" class="py-3 px-5 rounded-xl font-medium text-sm bg-slate-800 hover:bg-rose-950/50 hover:text-rose-300 hover:border-rose-800/60 text-slate-300 border border-slate-700 transition-all flex items-center gap-2 cursor-pointer">
+              <svg class="w-4 h-4 text-rose-400" fill="currentColor" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="1.5"/></svg>
+              <span>Stop</span>
+            </button>
+            <button id="snap-now-btn" onclick="triggerImmediatePair()" class="flex-1 py-3 px-4 rounded-xl font-medium text-sm bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition-all flex items-center justify-center gap-2 cursor-pointer">
+              <svg class="w-4 h-4 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+              </svg>
+              <span>Capture Pair Now</span>
+            </button>
+          </div>
         </div>
       </div>
 
-      <!-- Live Countdown Timer & Cycle Progress Box -->
-      <div class="bg-slate-900/80 border border-slate-800 rounded-2xl p-5 shadow-xl">
-        <div class="flex items-center justify-between mb-2">
-          <span class="text-xs font-semibold uppercase tracking-wider text-slate-400">Next Capture Countdown</span>
+      <!-- COUNTDOWN & TIMER CARD -->
+      <div class="bg-slate-900/80 border border-slate-800 rounded-2xl p-4 sm:p-5 shadow-xl flex flex-col gap-4">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <div class="w-8 h-8 rounded-lg bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-cyan-400">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            <div>
+              <h3 class="text-sm font-semibold text-white">Next Capture Countdown</h3>
+              <p class="text-xs text-slate-400" id="cycle-interval-desc">Standard cycle: 2 snapshots every 20 minutes</p>
+            </div>
+          </div>
+
           <!-- Test Mode Toggle -->
-          <label class="flex items-center gap-2 cursor-pointer select-none">
-            <input id="testModeCheckbox" type="checkbox" class="sr-only peer">
-            <div class="w-9 h-5 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-amber-600"></div>
-            <span class="text-xs font-medium text-slate-300">Test Mode (10s)</span>
-          </label>
+          <div class="flex items-center gap-2">
+            <span class="text-xs text-slate-400">Test Mode (10s):</span>
+            <label class="relative inline-flex items-center cursor-pointer">
+              <input type="checkbox" id="test-mode-toggle" class="sr-only peer" onchange="toggleTestMode(this.checked)">
+              <div class="w-9 h-5 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-amber-500 border border-slate-700"></div>
+            </label>
+          </div>
         </div>
 
-        <div class="flex items-baseline gap-3 my-2">
-          <span id="countdownDisplay" class="font-mono text-4xl sm:text-5xl font-extrabold tracking-wider text-emerald-400">--:--</span>
-          <span id="cycleStatus" class="text-xs text-slate-400 font-mono">Waiting for View</span>
-        </div>
-
-        <!-- Progress bar -->
-        <div class="w-full bg-slate-800 h-2 rounded-full overflow-hidden mt-3">
-          <div id="cycleProgressBar" class="bg-emerald-500 h-full transition-all duration-300 w-0"></div>
-        </div>
-        <div class="flex justify-between text-[11px] text-slate-500 font-mono mt-1">
-          <span>00:00</span>
-          <span id="intervalLabel">Cycle: 20m (1200s)</span>
+        <!-- Large Digital Countdown -->
+        <div class="bg-slate-950/60 border border-slate-800/80 rounded-xl p-4 flex flex-col items-center justify-center text-center">
+          <span class="text-xs font-mono uppercase tracking-widest text-slate-400 mb-1" id="timer-label">Time Remaining</span>
+          <div class="text-4xl sm:text-5xl font-mono font-bold text-slate-100 tracking-wider" id="countdown-display">
+            20:00
+          </div>
+          <!-- Progress Bar -->
+          <div class="w-full bg-slate-800 h-1.5 rounded-full mt-3 overflow-hidden">
+            <div id="timer-progress-bar" class="bg-emerald-500 h-full transition-all duration-1000" style="width: 100%;"></div>
+          </div>
+          <span id="cycle-detail-text" class="text-xs text-slate-400 mt-2 font-mono">Status: Standby</span>
         </div>
       </div>
     </div>
 
-    <!-- Right Column: Settings, Thumbnail Preview, Status Logs (5 cols) -->
-    <div class="lg:col-span-5 flex flex-col gap-5">
+    <!-- RIGHT COLUMN: RECENT PHOTOS, CONFIG & LOGS (5 Cols) -->
+    <div class="lg:col-span-5 flex flex-col gap-6 w-full">
 
-      <!-- Device ID & Supabase Settings -->
-      <div class="bg-slate-900/80 border border-slate-800 rounded-2xl p-4 shadow-xl">
-        <h2 class="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-3 flex items-center justify-between">
-          <span>Configuration</span>
-          <span class="text-[10px] text-slate-500 font-mono">localStorage</span>
-        </h2>
-
-        <div class="space-y-3">
-          <div>
-            <label class="block text-xs font-medium text-slate-300 mb-1">Device ID / Name</label>
-            <input id="deviceIdInput" type="text" value="Phone_01" placeholder="e.g. Phone_01" class="w-full px-3 py-2 bg-slate-950 border border-slate-700/80 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500 font-mono">
+      <!-- RECENT DUAL SNAPSHOT THUMBNAILS -->
+      <div class="bg-slate-900/80 border border-slate-800 rounded-2xl p-4 sm:p-5 shadow-xl flex flex-col gap-3">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <div class="w-7 h-7 rounded-lg bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+            </div>
+            <h3 class="text-sm font-semibold text-white">Recent Photo Pair</h3>
           </div>
-          <div>
-            <label class="block text-xs font-medium text-slate-300 mb-1">Supabase Project URL</label>
-            <input id="supabaseUrlInput" type="url" placeholder="https://xyz.supabase.co" class="w-full px-3 py-2 bg-slate-950 border border-slate-700/80 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500 font-mono text-xs">
-          </div>
-          <div>
-            <label class="block text-xs font-medium text-slate-300 mb-1">Supabase Anon Key</label>
-            <input id="supabaseAnonKeyInput" type="password" placeholder="eyJhbGciOi..." class="w-full px-3 py-2 bg-slate-950 border border-slate-700/80 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500 font-mono text-xs">
-          </div>
-          <div>
-            <label class="block text-xs font-medium text-slate-300 mb-1">Bucket Name</label>
-            <input id="supabaseBucketInput" type="text" value="security-photos" placeholder="security-photos" class="w-full px-3 py-2 bg-slate-950 border border-slate-700/80 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500 font-mono text-xs">
-          </div>
-        </div>
-      </div>
-
-      <!-- Thumbnail Preview Section (Most recently captured photo pair) -->
-      <div class="bg-slate-900/80 border border-slate-800 rounded-2xl p-4 shadow-xl">
-        <div class="flex items-center justify-between mb-3">
-          <h2 class="text-xs font-semibold uppercase tracking-wider text-slate-400">Recent Photo Pair</h2>
-          <span id="pairTimestamp" class="text-[10px] font-mono text-slate-500">No captures yet</span>
+          <span id="pair-time-tag" class="text-xs font-mono text-slate-400">No captures yet</span>
         </div>
 
+        <!-- 2 Side-by-side Thumbnails -->
         <div class="grid grid-cols-2 gap-3">
-          <!-- Photo 1 -->
-          <div class="bg-slate-950 border border-slate-800 rounded-xl p-2 flex flex-col">
-            <div class="relative aspect-[4/3] bg-black rounded-lg overflow-hidden border border-slate-800 flex items-center justify-center">
-              <img id="thumbPhoto1" class="w-full h-full object-cover hidden" alt="Photo 1">
-              <span id="thumbPlaceholder1" class="text-[11px] text-slate-600 font-mono">Photo #1</span>
-              <span id="badgePhoto1" class="hidden absolute top-1 left-1 text-[9px] font-mono px-1.5 py-0.5 rounded bg-black/70 text-emerald-400">#1</span>
+          <!-- Shot 1 -->
+          <div class="flex flex-col gap-1.5">
+            <div class="relative aspect-[4/3] bg-black rounded-lg overflow-hidden border border-slate-800 flex items-center justify-center group">
+              <img id="thumb-1" src="" alt="Snapshot 1" class="w-full h-full object-cover hidden cursor-pointer" onclick="openPhotoModal(1)">
+              <div id="thumb-1-placeholder" class="text-[11px] text-slate-500 font-mono flex flex-col items-center gap-1">
+                <span>Shot #1</span>
+                <span class="text-[9px] text-slate-600">Pending</span>
+              </div>
+              <span id="thumb-1-badge" class="hidden absolute bottom-1 right-1 text-[9px] font-mono px-1.5 py-0.5 rounded bg-slate-900/90 text-emerald-400 border border-emerald-500/30">
+                Uploaded
+              </span>
             </div>
-            <div class="mt-2 flex items-center justify-between text-[11px] font-mono">
-              <span class="text-slate-400">Shot 1</span>
-              <span id="statusPhoto1" class="text-slate-500">-</span>
-            </div>
+            <span class="text-[11px] text-slate-400 font-mono text-center">Photo 1 (0s)</span>
           </div>
 
-          <!-- Photo 2 (+2s) -->
-          <div class="bg-slate-950 border border-slate-800 rounded-xl p-2 flex flex-col">
-            <div class="relative aspect-[4/3] bg-black rounded-lg overflow-hidden border border-slate-800 flex items-center justify-center">
-              <img id="thumbPhoto2" class="w-full h-full object-cover hidden" alt="Photo 2">
-              <span id="thumbPlaceholder2" class="text-[11px] text-slate-600 font-mono">Photo #2</span>
-              <span id="badgePhoto2" class="hidden absolute top-1 left-1 text-[9px] font-mono px-1.5 py-0.5 rounded bg-black/70 text-emerald-400">#2 (+2s)</span>
+          <!-- Shot 2 -->
+          <div class="flex flex-col gap-1.5">
+            <div class="relative aspect-[4/3] bg-black rounded-lg overflow-hidden border border-slate-800 flex items-center justify-center group">
+              <img id="thumb-2" src="" alt="Snapshot 2" class="w-full h-full object-cover hidden cursor-pointer" onclick="openPhotoModal(2)">
+              <div id="thumb-2-placeholder" class="text-[11px] text-slate-500 font-mono flex flex-col items-center gap-1">
+                <span>Shot #2</span>
+                <span class="text-[9px] text-slate-600">Pending (+2s)</span>
+              </div>
+              <span id="thumb-2-badge" class="hidden absolute bottom-1 right-1 text-[9px] font-mono px-1.5 py-0.5 rounded bg-slate-900/90 text-emerald-400 border border-emerald-500/30">
+                Uploaded
+              </span>
             </div>
-            <div class="mt-2 flex items-center justify-between text-[11px] font-mono">
-              <span class="text-slate-400">Shot 2</span>
-              <span id="statusPhoto2" class="text-slate-500">-</span>
-            </div>
+            <span class="text-[11px] text-slate-400 font-mono text-center">Photo 2 (+2s)</span>
           </div>
         </div>
       </div>
 
-      <!-- Scrollable Status Log Box -->
-      <div class="bg-slate-900/80 border border-slate-800 rounded-2xl p-4 shadow-xl flex-1 flex flex-col min-h-[220px]">
-        <div class="flex items-center justify-between mb-2">
-          <h2 class="text-xs font-semibold uppercase tracking-wider text-slate-400">Status Logs</h2>
-          <button id="clearLogsBtn" class="text-[11px] text-slate-500 hover:text-slate-300 font-mono cursor-pointer">Clear</button>
+      <!-- DEVICE SETTINGS & SUPABASE CONFIG -->
+      <div class="bg-slate-900/80 border border-slate-800 rounded-2xl p-4 sm:p-5 shadow-xl flex flex-col gap-3">
+        <div class="flex items-center justify-between">
+          <h3 class="text-sm font-semibold text-white flex items-center gap-2">
+            <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
+            Device & Cloud Configuration
+          </h3>
+          <span class="text-[10px] font-mono text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">PRE-CONFIGURED</span>
         </div>
-        <div id="logsContainer" class="flex-1 max-h-52 overflow-y-auto space-y-1.5 font-mono text-[11px] p-2 bg-slate-950 rounded-lg border border-slate-800">
-          <div class="text-slate-500">[System] Ready. Click "View" to begin security monitoring.</div>
+
+        <!-- Device ID Input -->
+        <div>
+          <label class="block text-xs text-slate-400 mb-1">Device ID / Folder Name:</label>
+          <input type="text" id="device-id-input" value="Phone_01" onchange="updateDeviceId(this.value)" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs font-mono text-emerald-400 focus:outline-none focus:border-emerald-500">
+        </div>
+
+        <!-- Hardcoded credentials overview accordion -->
+        <div class="bg-slate-950/60 border border-slate-800/80 rounded-lg p-3 text-[11px] font-mono flex flex-col gap-1.5">
+          <div class="flex justify-between items-center text-slate-400">
+            <span>Supabase Bucket:</span>
+            <span class="text-emerald-400 font-semibold" id="cfg-bucket">healthy</span>
+          </div>
+          <div class="flex justify-between items-center text-slate-400">
+            <span>Storage Path:</span>
+            <span class="text-slate-300 truncate max-w-[200px]" id="cfg-path-sample">{device_id}/photo_{ts}_1.jpg</span>
+          </div>
+          <div class="flex justify-between items-center text-slate-400">
+            <span>Project URL:</span>
+            <span class="text-slate-400 truncate max-w-[200px]">nchosqdrzsphqnmrosfr.supabase.co</span>
+          </div>
+          <button onclick="testCloudConnection()" class="mt-2 py-1.5 px-3 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded text-xs transition-colors flex items-center justify-center gap-1.5 cursor-pointer">
+            <svg class="w-3.5 h-3.5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+            </svg>
+            <span>Verify Bucket "healthy"</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- STATUS LOGS BOX -->
+      <div class="bg-slate-900/80 border border-slate-800 rounded-2xl p-4 sm:p-5 shadow-xl flex flex-col gap-3">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <div class="w-7 h-7 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+            </div>
+            <h3 class="text-sm font-semibold text-white">Activity Logs</h3>
+          </div>
+          <button onclick="clearLogs()" class="text-xs text-slate-500 hover:text-slate-300 transition-colors">Clear</button>
+        </div>
+
+        <div id="logs-container" class="h-44 overflow-y-auto bg-slate-950/80 rounded-xl p-3 border border-slate-800 text-[11px] font-mono flex flex-col gap-1.5">
+          <!-- Logs appended dynamically -->
         </div>
       </div>
 
     </div>
   </main>
 
+  <!-- PHOTO MODAL -->
+  <div id="photo-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-lg w-full overflow-hidden shadow-2xl flex flex-col">
+      <div class="p-4 border-b border-slate-800 flex items-center justify-between">
+        <h4 id="modal-title" class="text-sm font-semibold text-white">Snapshot Details</h4>
+        <button onclick="closePhotoModal()" class="text-slate-400 hover:text-white text-lg">&times;</button>
+      </div>
+      <div class="p-4 bg-black flex items-center justify-center">
+        <img id="modal-img" src="" alt="Full snapshot" class="max-h-80 w-auto rounded object-contain">
+      </div>
+      <div class="p-4 flex items-center justify-between text-xs text-slate-400">
+        <span id="modal-meta" class="font-mono"></span>
+        <a id="modal-download" href="#" download="snapshot.jpg" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg font-medium">Download</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- JAVASCRIPT LOGIC & SUPABASE REST INTEGRATION -->
   <script>
+    // ==========================================
+    // 1. HARDCODED CONFIGURATION
+    // ==========================================
+    const CONFIG = {
+      // User's exact Supabase credentials normalized to origin
+      SUPABASE_URL: "https://nchosqdrzsphqnmrosfr.supabase.co",
+      SUPABASE_ANON_KEY: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5jaG9zcWRyenNwaHFubXJvc2ZyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk1MzU1NTEsImV4cCI6MjEwNTExMTU1MX0.BnLxYZyLXxYLzF9PN7KBoLvoDvp-WLI5Qh2--XH9oeE",
+      BUCKET_NAME: "healthy",
+      DEFAULT_DEVICE_ID: "Phone_01",
+      STANDARD_INTERVAL_SECONDS: 1200, // 20 minutes (1200 seconds)
+      TEST_INTERVAL_SECONDS: 10        // 10 seconds for rapid testing
+    };
+
     // State
-    let stream = null;
-    let wakeLock = null;
     let isMonitoring = false;
     let isCapturing = false;
+    let testMode = false;
+    let currentStream = null;
+    let wakeLockSentinel = null;
     let timerInterval = null;
-    let remainingSeconds = 1200;
-    let totalCycleSeconds = 1200;
+    let totalCycleSeconds = CONFIG.STANDARD_INTERVAL_SECONDS;
+    let remainingSeconds = totalCycleSeconds;
+    let currentPair = { photo1: null, photo2: null };
 
-    // Elements
-    const viewBtn = document.getElementById('viewBtn');
-    const stopBtn = document.getElementById('stopBtn');
-    const snapNowBtn = document.getElementById('snapNowBtn');
-    const cameraVideo = document.getElementById('cameraVideo');
-    const cameraPlaceholder = document.getElementById('cameraPlaceholder');
-    const recIndicator = document.getElementById('recIndicator');
-    const cameraStatusText = document.getElementById('cameraStatusText');
-    const resBadge = document.getElementById('resBadge');
-    const flashOverlay = document.getElementById('flashOverlay');
-    const testModeCheckbox = document.getElementById('testModeCheckbox');
-    const countdownDisplay = document.getElementById('countdownDisplay');
-    const cycleStatus = document.getElementById('cycleStatus');
-    const cycleProgressBar = document.getElementById('cycleProgressBar');
-    const intervalLabel = document.getElementById('intervalLabel');
-    const wakeLockBadge = document.getElementById('wakeLockBadge');
-    const wakeLockText = document.getElementById('wakeLockText');
-    const logsContainer = document.getElementById('logsContainer');
-    const clearLogsBtn = document.getElementById('clearLogsBtn');
+    // DOM Elements
+    const video = document.getElementById('camera-video');
+    const cameraPlaceholder = document.getElementById('camera-placeholder');
+    const viewBtn = document.getElementById('view-btn');
+    const activeControls = document.getElementById('active-controls');
+    const streamStatus = document.getElementById('stream-status');
+    const captureBadge = document.getElementById('capture-badge');
+    const resolutionBadge = document.getElementById('resolution-badge');
+    const countdownDisplay = document.getElementById('countdown-display');
+    const timerProgressBar = document.getElementById('timer-progress-bar');
+    const cycleDetailText = document.getElementById('cycle-detail-text');
+    const logsContainer = document.getElementById('logs-container');
+    const deviceInput = document.getElementById('device-id-input');
+    const headerDeviceName = document.getElementById('header-device-name');
+    const headerStatusBadge = document.getElementById('header-status-badge');
+    const wakelockPill = document.getElementById('wakelock-pill');
+    const wakelockDot = document.getElementById('wakelock-dot');
+    const wakelockLabel = document.getElementById('wakelock-label');
+    const thumb1 = document.getElementById('thumb-1');
+    const thumb2 = document.getElementById('thumb-2');
+    const thumb1Placeholder = document.getElementById('thumb-1-placeholder');
+    const thumb2Placeholder = document.getElementById('thumb-2-placeholder');
+    const thumb1Badge = document.getElementById('thumb-1-badge');
+    const thumb2Badge = document.getElementById('thumb-2-badge');
+    const pairTimeTag = document.getElementById('pair-time-tag');
 
-    // Config Inputs
-    const deviceIdInput = document.getElementById('deviceIdInput');
-    const supabaseUrlInput = document.getElementById('supabaseUrlInput');
-    const supabaseAnonKeyInput = document.getElementById('supabaseAnonKeyInput');
-    const supabaseBucketInput = document.getElementById('supabaseBucketInput');
+    // Init persistent device ID
+    const savedDeviceId = localStorage.getItem('sec_device_id') || CONFIG.DEFAULT_DEVICE_ID;
+    deviceInput.value = savedDeviceId;
+    headerDeviceName.innerText = savedDeviceId;
 
-    // Load LocalStorage
-    deviceIdInput.value = localStorage.getItem('sec_device_id') || 'Phone_01';
-    supabaseUrlInput.value = localStorage.getItem('sec_supabase_url') || '';
-    supabaseAnonKeyInput.value = localStorage.getItem('sec_supabase_anon_key') || '';
-    supabaseBucketInput.value = localStorage.getItem('sec_supabase_bucket') || 'security-photos';
-    testModeCheckbox.checked = localStorage.getItem('sec_test_mode') === 'true';
+    function getDeviceId() {
+      return (deviceInput.value || CONFIG.DEFAULT_DEVICE_ID).trim().replace(/[/\\?%*:|"<>]/g, '_');
+    }
 
-    // Save on change
-    deviceIdInput.addEventListener('input', () => localStorage.setItem('sec_device_id', deviceIdInput.value));
-    supabaseUrlInput.addEventListener('input', () => localStorage.setItem('sec_supabase_url', supabaseUrlInput.value));
-    supabaseAnonKeyInput.addEventListener('input', () => localStorage.setItem('sec_supabase_anon_key', supabaseAnonKeyInput.value));
-    supabaseBucketInput.addEventListener('input', () => localStorage.setItem('sec_supabase_bucket', supabaseBucketInput.value));
-    testModeCheckbox.addEventListener('change', () => {
-      localStorage.setItem('sec_test_mode', testModeCheckbox.checked);
-      updateIntervalConfig();
-    });
+    function updateDeviceId(val) {
+      const clean = val.trim() || CONFIG.DEFAULT_DEVICE_ID;
+      localStorage.setItem('sec_device_id', clean);
+      headerDeviceName.innerText = clean;
+      addLog(`Device ID updated to: "${clean}"`, 'info');
+    }
 
-    function log(message, type = 'info') {
-      const time = new Date().toTimeString().split(' ')[0];
-      const entry = document.createElement('div');
-      let colorClass = 'text-slate-400';
+    // ==========================================
+    // 2. LOGGING HELPER
+    // ==========================================
+    function addLog(msg, type = 'info', details = '') {
+      const timeStr = new Date().toTimeString().split(' ')[0];
+      const div = document.createElement('div');
+      div.className = 'py-0.5 flex flex-col leading-tight';
+
+      let colorClass = 'text-slate-300';
       if (type === 'success') colorClass = 'text-emerald-400';
       if (type === 'error') colorClass = 'text-rose-400';
-      if (type === 'warn') colorClass = 'text-amber-400';
-      entry.className = colorClass;
-      entry.textContent = `[${time}] ${message}`;
-      logsContainer.appendChild(entry);
+      if (type === 'warning') colorClass = 'text-amber-400';
+
+      div.innerHTML = `
+        <div class="flex items-start gap-1.5">
+          <span class="text-slate-500 font-mono text-[10px]">${timeStr}</span>
+          <span class="${colorClass}">${msg}</span>
+        </div>
+        ${details ? `<span class="text-slate-500 text-[10px] pl-12 font-mono">${details}</span>` : ''}
+      `;
+      logsContainer.appendChild(div);
       logsContainer.scrollTop = logsContainer.scrollHeight;
     }
 
-    clearLogsBtn.addEventListener('click', () => {
+    function clearLogs() {
       logsContainer.innerHTML = '';
-      log('Logs cleared.');
-    });
+      addLog('Logs cleared.', 'info');
+    }
 
-    // Screen Wake Lock API
-    async function requestWakeLock() {
+    // Initial greeting log
+    addLog('Security Monitor initialized.', 'info');
+    addLog(`Supabase Storage pre-configured (Bucket: "${CONFIG.BUCKET_NAME}").`, 'success');
+
+    // ==========================================
+    // 3. SCREEN WAKE LOCK API
+    // ==========================================
+    async function acquireWakeLock() {
       if ('wakeLock' in navigator) {
         try {
-          wakeLock = await navigator.wakeLock.request('screen');
-          wakeLockBadge.classList.remove('hidden');
-          wakeLockText.textContent = 'Wake Lock: Active';
-          wakeLockBadge.querySelector('span').className = 'w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_8px_#10b981]';
-          log('Screen Wake Lock acquired. Display sleep prevented.', 'success');
-          wakeLock.addEventListener('release', () => {
-            if (isMonitoring) {
-              wakeLockText.textContent = 'Wake Lock: Released';
-              wakeLockBadge.querySelector('span').className = 'w-2 h-2 rounded-full bg-amber-400';
-            }
+          wakeLockSentinel = await navigator.wakeLock.request('screen');
+          wakelockDot.className = 'w-2 h-2 rounded-full bg-emerald-400 animate-pulse';
+          wakelockLabel.innerText = 'Screen Sleep: Locked (Awake)';
+          addLog('Screen Wake Lock acquired: phone display will stay awake.', 'success');
+
+          wakeLockSentinel.addEventListener('release', () => {
+            wakelockDot.className = 'w-2 h-2 rounded-full bg-slate-500';
+            wakelockLabel.innerText = 'Screen Sleep: Normal';
           });
         } catch (err) {
-          log('Wake Lock request rejected: ' + err.message, 'warn');
+          addLog('Screen Wake Lock request failed: ' + err.message, 'warning');
         }
       } else {
-        log('Screen Wake Lock API not supported on this browser.', 'warn');
+        addLog('Screen Wake Lock API not supported in this browser.', 'warning');
       }
     }
 
-    async function releaseWakeLock() {
-      if (wakeLock) {
-        try { await wakeLock.release(); } catch(e) {}
-        wakeLock = null;
-        wakeLockText.textContent = 'Wake Lock: Off';
-        wakeLockBadge.querySelector('span').className = 'w-2 h-2 rounded-full bg-slate-600';
+    function releaseWakeLock() {
+      if (wakeLockSentinel) {
+        wakeLockSentinel.release();
+        wakeLockSentinel = null;
       }
     }
 
     document.addEventListener('visibilitychange', async () => {
-      if (wakeLock !== null && document.visibilityState === 'visible' && isMonitoring) {
-        await requestWakeLock();
+      if (isMonitoring && document.visibilityState === 'visible' && !wakeLockSentinel) {
+        await acquireWakeLock();
       }
     });
 
-    function updateIntervalConfig() {
-      const isTest = testModeCheckbox.checked;
-      totalCycleSeconds = isTest ? 10 : 1200;
-      intervalLabel.textContent = isTest ? 'Cycle: 10s (Test)' : 'Cycle: 20m (1200s)';
-      if (isMonitoring && !isCapturing) {
-        remainingSeconds = Math.min(remainingSeconds, totalCycleSeconds);
-        updateTimerDisplay();
+    // ==========================================
+    // 4. CAMERA & CANVAS CAPTURE (ZERO FLASH)
+    // ==========================================
+    async function initFrontCamera() {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        throw new Error('Camera API (getUserMedia) not supported in this browser.');
       }
-    }
-
-    function updateTimerDisplay() {
-      const mins = Math.floor(remainingSeconds / 60).toString().padStart(2, '0');
-      const secs = (remainingSeconds % 60).toString().padStart(2, '0');
-      countdownDisplay.textContent = `${mins}:${secs}`;
-      const elapsed = totalCycleSeconds - remainingSeconds;
-      const pct = Math.min(100, Math.max(0, (elapsed / totalCycleSeconds) * 100));
-      cycleProgressBar.style.width = `${pct}%`;
-    }
-
-    // Silent Snapshot Capture via Canvas
-    async function captureFrame() {
-      const width = cameraVideo.videoWidth || 1280;
-      const height = cameraVideo.videoHeight || 720;
-      const canvas = document.createElement('canvas');
-      canvas.width = width;
-      canvas.height = height;
-      const ctx = canvas.getContext('2d');
-      ctx.drawImage(cameraVideo, 0, 0, width, height);
-
-      // Silent visual subtle flash
-      flashOverlay.style.opacity = '1';
-      setTimeout(() => { flashOverlay.style.opacity = '0'; }, 100);
-
-      const blob = await new Promise(res => canvas.toBlob(res, 'image/jpeg', 0.90));
-      const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
-      return { blob, dataUrl, width, height };
-    }
-
-    // Upload to Supabase Storage REST API
-    async function uploadPhotoToSupabase(blob, storagePath) {
-      const url = supabaseUrlInput.value.trim().replace(/\/+$/, '');
-      const anonKey = supabaseAnonKeyInput.value.trim();
-      const bucket = supabaseBucketInput.value.trim();
-
-      if (!url || !anonKey || !bucket) {
-        log(`Supabase credentials not configured. Photo saved locally in preview (${(blob.size/1024).toFixed(1)} KB)`, 'warn');
-        return { success: false, reason: 'unconfigured' };
-      }
-
-      const endpoint = `${url}/storage/v1/object/${encodeURIComponent(bucket)}/${storagePath}`;
       try {
-        const res = await fetch(endpoint, {
-          method: 'POST',
-          headers: {
-            'apikey': anonKey,
-            'Authorization': `Bearer ${anonKey}`,
-            'Content-Type': 'image/jpeg',
-            'x-upsert': 'true'
-          },
-          body: blob
+        return await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: 'user', width: { ideal: 1920 }, height: { ideal: 1080 } },
+          audio: false
         });
-
-        if (res.ok) {
-          log(`Uploaded ${storagePath} (${(blob.size/1024).toFixed(1)} KB)`, 'success');
-          return { success: true };
-        } else {
-          const errText = await res.text();
-          log(`Upload failed [HTTP ${res.status}]: ${errText.slice(0, 80)}`, 'error');
-          return { success: false, error: errText };
-        }
       } catch (err) {
-        log(`Network error uploading ${storagePath}: ${err.message}`, 'error');
-        return { success: false, error: err.message };
+        return await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: 'user' },
+          audio: false
+        });
       }
     }
 
-    // Capture 2 consecutive photos 2 seconds apart
-    async function executeTwoConsecutiveCaptures() {
-      if (isCapturing || !stream) return;
-      isCapturing = true;
-      cycleStatus.textContent = 'Capturing Shot 1/2...';
-
+    function getTimestampString() {
       const d = new Date();
-      const pad = n => n.toString().padStart(2, '0');
-      const timestamp = `${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}_${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}`;
-      const deviceId = (deviceIdInput.value.trim() || 'Phone_01').replace(/[/\\?%*:|"<>]/g, '_');
-      document.getElementById('pairTimestamp').textContent = d.toLocaleTimeString();
+      const pad = (n) => n.toString().padStart(2, '0');
+      return `${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}_${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}`;
+    }
+
+    /**
+     * Standard HTML5 Canvas snapshot capture
+     * Zero camera flash / zero torch trigger for battery efficiency and stealth
+     */
+    async function captureSilentFrame() {
+      const canvas = document.createElement('canvas');
+      canvas.width = video.videoWidth || 1280;
+      canvas.height = video.videoHeight || 720;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+      const blob = await new Promise((resolve) => {
+        canvas.toBlob(resolve, 'image/jpeg', 0.92);
+      });
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+      return { blob, dataUrl };
+    }
+
+    // ==========================================
+    // 5. SUPABASE STORAGE REST UPLOAD
+    // ==========================================
+    async function uploadToSupabase(storagePath, blob) {
+      // Path: {device_id}/photo_{timestamp}_{index}.jpg
+      const endpoint = `${CONFIG.SUPABASE_URL}/storage/v1/object/${encodeURIComponent(CONFIG.BUCKET_NAME)}/${storagePath}`;
+
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: {
+          'apikey': CONFIG.SUPABASE_ANON_KEY,
+          'Authorization': `Bearer ${CONFIG.SUPABASE_ANON_KEY}`,
+          'Content-Type': 'image/jpeg',
+          'x-upsert': 'true'
+        },
+        body: blob
+      });
+
+      if (!response.ok) {
+        let errMessage = `HTTP ${response.status} ${response.statusText}`;
+        try {
+          const errData = await response.json();
+          if (errData.message) errMessage = errData.message;
+          else if (errData.error) errMessage = errData.error;
+        } catch { }
+        throw new Error(errMessage);
+      }
+      return `${CONFIG.BUCKET_NAME}/${storagePath}`;
+    }
+
+    // ==========================================
+    // 6. DUAL SNAPSHOT CAPTURE PIPELINE
+    // ==========================================
+    async function executeTwoSnapshotCycle() {
+      if (!video || isCapturing) return;
+      isCapturing = true;
+      captureBadge.classList.remove('hidden');
+      cycleDetailText.innerText = 'Capturing 2 snapshots silently...';
+
+      const deviceId = getDeviceId();
+      const ts = getTimestampString();
+      const displayTime = new Date().toLocaleTimeString();
+      pairTimeTag.innerText = `Cycle: ${displayTime}`;
 
       try {
-        // 1. First Photo immediately
-        log(`Capturing photo 1 of 2...`, 'info');
-        const snap1 = await captureFrame();
-        const path1 = `${deviceId}/photo_${timestamp}_1.jpg`;
-        
-        // Update Thumb 1
-        const t1 = document.getElementById('thumbPhoto1');
-        t1.src = snap1.dataUrl;
-        t1.classList.remove('hidden');
-        document.getElementById('thumbPlaceholder1').classList.add('hidden');
-        document.getElementById('badgePhoto1').classList.remove('hidden');
-        document.getElementById('statusPhoto1').textContent = 'Uploading...';
+        // --- Photo #1 (0s) ---
+        addLog(`Capturing silent snapshot 1/2...`, 'info');
+        const shot1 = await captureSilentFrame();
+        const path1 = `${deviceId}/photo_${ts}_1.jpg`;
 
-        const up1 = await uploadPhotoToSupabase(snap1.blob, path1);
-        document.getElementById('statusPhoto1').textContent = up1.success ? 'Uploaded' : (up1.reason === 'unconfigured' ? 'Local' : 'Failed');
-        document.getElementById('statusPhoto1').className = up1.success ? 'text-emerald-400' : (up1.reason === 'unconfigured' ? 'text-amber-400' : 'text-rose-400');
+        // Update Thumbnail 1
+        thumb1.src = shot1.dataUrl;
+        thumb1.classList.remove('hidden');
+        thumb1Placeholder.classList.add('hidden');
+        thumb1Badge.innerText = 'Uploading...';
+        thumb1Badge.className = 'absolute bottom-1 right-1 text-[9px] font-mono px-1.5 py-0.5 rounded bg-slate-900/90 text-amber-400 border border-amber-500/30';
+        thumb1Badge.classList.remove('hidden');
+        currentPair.photo1 = { dataUrl: shot1.dataUrl, path: path1, time: displayTime };
 
-        // 2. Wait 2 seconds
-        cycleStatus.textContent = 'Waiting 2s interval...';
-        await new Promise(r => setTimeout(r, 2000));
+        // Upload Photo #1
+        try {
+          const uploadedPath1 = await uploadToSupabase(path1, shot1.blob);
+          thumb1Badge.innerText = 'Uploaded';
+          thumb1Badge.className = 'absolute bottom-1 right-1 text-[9px] font-mono px-1.5 py-0.5 rounded bg-slate-900/90 text-emerald-400 border border-emerald-500/30';
+          addLog(`✅ Snapshot 1/2 uploaded to Supabase: ${uploadedPath1}`, 'success');
+        } catch (upErr) {
+          thumb1Badge.innerText = 'Upload Err';
+          thumb1Badge.className = 'absolute bottom-1 right-1 text-[9px] font-mono px-1.5 py-0.5 rounded bg-slate-900/90 text-rose-400 border border-rose-500/30';
+          addLog(`❌ Snapshot 1/2 upload failed: ${upErr.message}`, 'error', `Target: ${path1}`);
+        }
 
-        // 3. Second Photo
-        log(`Capturing photo 2 of 2 (+2s)...`, 'info');
-        cycleStatus.textContent = 'Capturing Shot 2/2...';
-        const snap2 = await captureFrame();
-        const path2 = `${deviceId}/photo_${timestamp}_2.jpg`;
+        // --- Wait exactly 2 seconds ---
+        cycleDetailText.innerText = 'Waiting 2s for snapshot #2...';
+        await new Promise((r) => setTimeout(r, 2000));
 
-        // Update Thumb 2
-        const t2 = document.getElementById('thumbPhoto2');
-        t2.src = snap2.dataUrl;
-        t2.classList.remove('hidden');
-        document.getElementById('thumbPlaceholder2').classList.add('hidden');
-        document.getElementById('badgePhoto2').classList.remove('hidden');
-        document.getElementById('statusPhoto2').textContent = 'Uploading...';
+        // --- Photo #2 (+2s) ---
+        addLog(`Capturing silent snapshot 2/2 (+2s)...`, 'info');
+        const shot2 = await captureSilentFrame();
+        const path2 = `${deviceId}/photo_${ts}_2.jpg`;
 
-        const up2 = await uploadPhotoToSupabase(snap2.blob, path2);
-        document.getElementById('statusPhoto2').textContent = up2.success ? 'Uploaded' : (up2.reason === 'unconfigured' ? 'Local' : 'Failed');
-        document.getElementById('statusPhoto2').className = up2.success ? 'text-emerald-400' : (up2.reason === 'unconfigured' ? 'text-amber-400' : 'text-rose-400');
+        // Update Thumbnail 2
+        thumb2.src = shot2.dataUrl;
+        thumb2.classList.remove('hidden');
+        thumb2Placeholder.classList.add('hidden');
+        thumb2Badge.innerText = 'Uploading...';
+        thumb2Badge.className = 'absolute bottom-1 right-1 text-[9px] font-mono px-1.5 py-0.5 rounded bg-slate-900/90 text-amber-400 border border-amber-500/30';
+        thumb2Badge.classList.remove('hidden');
+        currentPair.photo2 = { dataUrl: shot2.dataUrl, path: path2, time: new Date().toLocaleTimeString() };
 
-        log(`Photo cycle completed. Next capture scheduled in ${testModeCheckbox.checked ? '10 seconds' : '20 minutes'}.`, 'success');
+        // Upload Photo #2
+        try {
+          const uploadedPath2 = await uploadToSupabase(path2, shot2.blob);
+          thumb2Badge.innerText = 'Uploaded';
+          thumb2Badge.className = 'absolute bottom-1 right-1 text-[9px] font-mono px-1.5 py-0.5 rounded bg-slate-900/90 text-emerald-400 border border-emerald-500/30';
+          addLog(`✅ Snapshot 2/2 uploaded to Supabase: ${uploadedPath2}`, 'success');
+        } catch (upErr2) {
+          thumb2Badge.innerText = 'Upload Err';
+          thumb2Badge.className = 'absolute bottom-1 right-1 text-[9px] font-mono px-1.5 py-0.5 rounded bg-slate-900/90 text-rose-400 border border-rose-500/30';
+          addLog(`❌ Snapshot 2/2 upload failed: ${upErr2.message}`, 'error', `Target: ${path2}`);
+        }
+
+        addLog(`Dual-snapshot cycle complete. Next in ${testMode ? '10s' : '20 min'}.`, 'success');
       } catch (err) {
-        log('Error during photo capture: ' + err.message, 'error');
+        addLog(`Error during capture cycle: ${err.message}`, 'error');
       } finally {
         isCapturing = false;
+        captureBadge.classList.add('hidden');
         remainingSeconds = totalCycleSeconds;
-        cycleStatus.textContent = 'Monitoring Active';
-        updateTimerDisplay();
+        cycleDetailText.innerText = 'Monitoring Active (Silent)';
       }
     }
 
-    function startTimer() {
-      clearInterval(timerInterval);
-      updateIntervalConfig();
+    // ==========================================
+    // 7. COUNTDOWN TIMER LOOP
+    // ==========================================
+    function formatTime(sec) {
+      const m = Math.floor(sec / 60).toString().padStart(2, '0');
+      const s = (sec % 60).toString().padStart(2, '0');
+      return `${m}:${s}`;
+    }
+
+    function updateTimerUI() {
+      countdownDisplay.innerText = formatTime(remainingSeconds);
+      const pct = (remainingSeconds / totalCycleSeconds) * 100;
+      timerProgressBar.style.width = `${pct}%`;
+    }
+
+    function startTimerLoop() {
+      if (timerInterval) clearInterval(timerInterval);
       remainingSeconds = totalCycleSeconds;
-      updateTimerDisplay();
+      updateTimerUI();
 
       timerInterval = setInterval(() => {
-        if (!isMonitoring || isCapturing) return;
-        remainingSeconds--;
-        if (remainingSeconds <= 0) {
-          executeTwoConsecutiveCaptures();
+        if (remainingSeconds <= 1) {
+          executeTwoSnapshotCycle();
+          remainingSeconds = totalCycleSeconds;
         } else {
-          updateTimerDisplay();
+          remainingSeconds--;
         }
+        updateTimerUI();
       }, 1000);
     }
 
-    // Primary Button "View" Action
-    async function startMonitoring() {
+    // ==========================================
+    // 8. PRIMARY "VIEW" ACTION
+    // ==========================================
+    async function startSurveillance() {
       try {
-        log('Requesting front camera permission (facingMode: user)...');
-        stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: 'user', width: { ideal: 1920 }, height: { ideal: 1080 } },
-          audio: false
-        }).catch(async () => {
-          return await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
-        });
+        addLog('Initializing front camera stream (facingMode: "user")...', 'info');
+        currentStream = await initFrontCamera();
+        video.srcObject = currentStream;
+        await video.play();
 
-        cameraVideo.srcObject = stream;
-        cameraVideo.classList.remove('hidden');
-        cameraPlaceholder.classList.add('hidden');
-        recIndicator.classList.remove('hidden');
-        cameraStatusText.textContent = 'Active (Front)';
-        cameraStatusText.className = 'text-emerald-400 font-semibold';
+        const track = currentStream.getVideoTracks()[0];
+        const settings = track.getSettings();
+        resolutionBadge.innerText = `${settings.width || video.videoWidth || 1920}x${settings.height || video.videoHeight || 1080}`;
 
-        cameraVideo.onloadedmetadata = () => {
-          resBadge.textContent = `${cameraVideo.videoWidth}x${cameraVideo.videoHeight}`;
-        };
-
+        // UI state switches
         isMonitoring = true;
+        video.classList.remove('hidden');
+        cameraPlaceholder.classList.add('hidden');
         viewBtn.classList.add('hidden');
-        stopBtn.classList.remove('hidden');
-        snapNowBtn.disabled = false;
+        activeControls.classList.remove('hidden');
 
-        log('Camera stream initialized.', 'success');
+        streamStatus.innerHTML = '<span class="w-2 h-2 rounded-full bg-rose-500 animate-pulse"></span> LIVE FEED';
+        streamStatus.className = 'flex items-center gap-1.5 text-xs font-mono font-medium text-rose-400 bg-rose-500/10 px-2 py-0.5 rounded border border-rose-500/20';
+        headerStatusBadge.innerText = 'LIVE SURVEILLANCE';
+        headerStatusBadge.className = 'text-[10px] uppercase font-mono px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/30';
+
+        addLog('Front camera activated successfully.', 'success');
 
         // Request Screen Wake Lock API
-        await requestWakeLock();
+        await acquireWakeLock();
 
-        // Immediate snapshot of 2 consecutive photos (2s apart)
-        await executeTwoConsecutiveCaptures();
+        // Immediately take 2 snapshots (2s apart)
+        await executeTwoSnapshotCycle();
 
-        // Start 20-minute (or 10s test) countdown timer
-        startTimer();
-
+        // Start repeating countdown loop
+        startTimerLoop();
       } catch (err) {
-        log('Camera permission failed or unavailable: ' + err.message, 'error');
+        addLog('Failed to start surveillance: ' + err.message, 'error');
       }
     }
 
-    function stopMonitoring() {
+    function stopSurveillance() {
       isMonitoring = false;
-      clearInterval(timerInterval);
-      releaseWakeLock();
-
-      if (stream) {
-        stream.getTracks().forEach(t => t.stop());
-        stream = null;
+      if (timerInterval) {
+        clearInterval(timerInterval);
+        timerInterval = null;
       }
-      cameraVideo.classList.add('hidden');
+      if (currentStream) {
+        currentStream.getTracks().forEach((t) => t.stop());
+        currentStream = null;
+      }
+      video.srcObject = null;
+      video.classList.add('hidden');
       cameraPlaceholder.classList.remove('hidden');
-      recIndicator.classList.add('hidden');
-      cameraStatusText.textContent = 'Standby';
-      cameraStatusText.className = 'text-slate-200';
       viewBtn.classList.remove('hidden');
-      stopBtn.classList.add('hidden');
-      snapNowBtn.disabled = true;
-      cycleStatus.textContent = 'Monitoring Stopped';
-      log('Monitoring stopped by user.');
+      activeControls.classList.add('hidden');
+
+      streamStatus.innerHTML = '<span class="w-2 h-2 rounded-full bg-slate-600"></span> STANDBY';
+      streamStatus.className = 'flex items-center gap-1.5 text-slate-400';
+      headerStatusBadge.innerText = 'STANDBY';
+      headerStatusBadge.className = 'text-[10px] uppercase font-mono px-2 py-0.5 rounded bg-slate-800 text-slate-400 border border-slate-700';
+      cycleDetailText.innerText = 'Status: Standby';
+
+      releaseWakeLock();
+      addLog('Surveillance stopped. Screen wake lock released.', 'info');
     }
 
-    viewBtn.addEventListener('click', startMonitoring);
-    stopBtn.addEventListener('click', stopMonitoring);
-    snapNowBtn.addEventListener('click', () => {
+    function triggerImmediatePair() {
       if (isMonitoring && !isCapturing) {
-        executeTwoConsecutiveCaptures();
+        addLog('Immediate photo pair triggered manually.', 'info');
+        executeTwoSnapshotCycle();
       }
-    });
+    }
 
-    updateIntervalConfig();
+    function toggleTestMode(enabled) {
+      testMode = enabled;
+      totalCycleSeconds = testMode ? CONFIG.TEST_INTERVAL_SECONDS : CONFIG.STANDARD_INTERVAL_SECONDS;
+      remainingSeconds = Math.min(remainingSeconds, totalCycleSeconds);
+      document.getElementById('cycle-interval-desc').innerText = testMode
+        ? '⚡ Test Mode: 2 snapshots every 10 seconds'
+        : 'Standard cycle: 2 snapshots every 20 minutes';
+      updateTimerUI();
+      addLog(
+        testMode ? '⚡ Test Mode enabled (10s interval)' : '⏱️ Standard Mode enabled (20 min interval)',
+        'info'
+      );
+    }
+
+    // ==========================================
+    // 9. PHOTO MODAL & CONNECTION TESTER
+    // ==========================================
+    function openPhotoModal(index) {
+      const p = index === 1 ? currentPair.photo1 : currentPair.photo2;
+      if (!p) return;
+      document.getElementById('modal-img').src = p.dataUrl;
+      document.getElementById('modal-title').innerText = `Snapshot #${index} - ${p.time}`;
+      document.getElementById('modal-meta').innerText = p.path;
+      document.getElementById('modal-download').href = p.dataUrl;
+      document.getElementById('modal-download').download = `photo_${index}.jpg`;
+      document.getElementById('photo-modal').classList.remove('hidden');
+    }
+
+    function closePhotoModal() {
+      document.getElementById('photo-modal').classList.add('hidden');
+    }
+
+    async function testCloudConnection() {
+      addLog(`Testing connection to Supabase bucket "${CONFIG.BUCKET_NAME}"...`, 'info');
+      try {
+        const res = await fetch(`${CONFIG.SUPABASE_URL}/storage/v1/bucket/${encodeURIComponent(CONFIG.BUCKET_NAME)}`, {
+          method: 'GET',
+          headers: {
+            'apikey': CONFIG.SUPABASE_ANON_KEY,
+            'Authorization': `Bearer ${CONFIG.SUPABASE_ANON_KEY}`
+          }
+        });
+        if (res.ok) {
+          addLog(`✅ Supabase bucket "${CONFIG.BUCKET_NAME}" verified successfully!`, 'success');
+        } else {
+          addLog(`Bucket check returned HTTP ${res.status}.`, 'warning');
+        }
+      } catch (e) {
+        addLog(`Connection test error: ${e.message}`, 'error');
+      }
+    }
   </script>
 </body>
 </html>
