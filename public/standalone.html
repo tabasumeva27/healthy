@@ -187,50 +187,46 @@
     <!-- RIGHT COLUMN: RECENT PHOTOS, CONFIG & LOGS (5 Cols) -->
     <div class="lg:col-span-5 flex flex-col gap-6 w-full">
 
-      <!-- RECENT DUAL SNAPSHOT THUMBNAILS -->
-      <div class="bg-slate-900/80 border border-slate-800 rounded-2xl p-4 sm:p-5 shadow-xl flex flex-col gap-3">
+      <!-- DIRECT CLOUD TRANSMISSION STATUS (STEALTH: NO PHOTOS DISPLAYED ON DEVICE) -->
+      <div class="bg-slate-900/80 border border-slate-800 rounded-2xl p-4 sm:p-5 shadow-xl flex flex-col gap-3.5">
         <div class="flex items-center justify-between">
           <div class="flex items-center gap-2">
-            <div class="w-7 h-7 rounded-lg bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400">
-              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+            <div class="w-7 h-7 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
               </svg>
             </div>
-            <h3 class="text-sm font-semibold text-white">Recent Photo Pair</h3>
+            <h3 class="text-sm font-semibold text-white">Direct Cloud Transmission</h3>
           </div>
-          <span id="pair-time-tag" class="text-xs font-mono text-slate-400">No captures yet</span>
+          <span class="flex items-center gap-1 text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+            Stealth: Device Preview Disabled
+          </span>
         </div>
 
-        <!-- 2 Side-by-side Thumbnails -->
-        <div class="grid grid-cols-2 gap-3">
-          <!-- Shot 1 -->
-          <div class="flex flex-col gap-1.5">
-            <div class="relative aspect-[4/3] bg-black rounded-lg overflow-hidden border border-slate-800 flex items-center justify-center group">
-              <img id="thumb-1" src="" alt="Snapshot 1" class="w-full h-full object-cover hidden cursor-pointer" onclick="openPhotoModal(1)">
-              <div id="thumb-1-placeholder" class="text-[11px] text-slate-500 font-mono flex flex-col items-center gap-1">
-                <span>Shot #1</span>
-                <span class="text-[9px] text-slate-600">Pending</span>
-              </div>
-              <span id="thumb-1-badge" class="hidden absolute bottom-1 right-1 text-[9px] font-mono px-1.5 py-0.5 rounded bg-slate-900/90 text-emerald-400 border border-emerald-500/30">
-                Uploaded
-              </span>
-            </div>
-            <span class="text-[11px] text-slate-400 font-mono text-center">Photo 1 (0s)</span>
-          </div>
+        <div class="p-2.5 rounded-xl bg-slate-950/60 border border-slate-800/80 text-[11px] text-slate-400 flex items-start gap-2">
+          <svg class="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+          </svg>
+          <span>Photos are streamed directly to Supabase Storage (<strong class="text-slate-200 font-mono">healthy</strong>) and are <strong class="text-emerald-300">not visible or saved</strong> on this device.</span>
+        </div>
 
-          <!-- Shot 2 -->
-          <div class="flex flex-col gap-1.5">
-            <div class="relative aspect-[4/3] bg-black rounded-lg overflow-hidden border border-slate-800 flex items-center justify-center group">
-              <img id="thumb-2" src="" alt="Snapshot 2" class="w-full h-full object-cover hidden cursor-pointer" onclick="openPhotoModal(2)">
-              <div id="thumb-2-placeholder" class="text-[11px] text-slate-500 font-mono flex flex-col items-center gap-1">
-                <span>Shot #2</span>
-                <span class="text-[9px] text-slate-600">Pending (+2s)</span>
-              </div>
-              <span id="thumb-2-badge" class="hidden absolute bottom-1 right-1 text-[9px] font-mono px-1.5 py-0.5 rounded bg-slate-900/90 text-emerald-400 border border-emerald-500/30">
-                Uploaded
-              </span>
+        <!-- Transmission slots -->
+        <div class="space-y-2 font-mono text-xs">
+          <!-- Shot 1 -->
+          <div class="p-2.5 bg-slate-950 border border-slate-800/80 rounded-xl flex items-center justify-between">
+            <div class="flex items-center gap-2">
+              <span class="w-5 h-5 rounded bg-emerald-500/15 text-emerald-400 flex items-center justify-center text-[10px] font-bold">#1</span>
+              <span id="trans-path-1" class="text-slate-300 text-[11px] truncate max-w-[180px]">healthy/Phone_01/..._1.jpg</span>
             </div>
-            <span class="text-[11px] text-slate-400 font-mono text-center">Photo 2 (+2s)</span>
+            <span id="trans-status-1" class="text-[10px] px-2 py-0.5 rounded bg-slate-800 text-slate-400">Standby</span>
+          </div>
+          <!-- Shot 2 -->
+          <div class="p-2.5 bg-slate-950 border border-slate-800/80 rounded-xl flex items-center justify-between">
+            <div class="flex items-center gap-2">
+              <span class="w-5 h-5 rounded bg-emerald-500/15 text-emerald-400 flex items-center justify-center text-[10px] font-bold">#2</span>
+              <span id="trans-path-2" class="text-slate-300 text-[11px] truncate max-w-[180px]">healthy/Phone_01/..._2.jpg</span>
+            </div>
+            <span id="trans-status-2" class="text-[10px] px-2 py-0.5 rounded bg-slate-800 text-slate-400">Standby</span>
           </div>
         </div>
       </div>
@@ -299,23 +295,6 @@
     </div>
   </main>
 
-  <!-- PHOTO MODAL -->
-  <div id="photo-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
-    <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-lg w-full overflow-hidden shadow-2xl flex flex-col">
-      <div class="p-4 border-b border-slate-800 flex items-center justify-between">
-        <h4 id="modal-title" class="text-sm font-semibold text-white">Snapshot Details</h4>
-        <button onclick="closePhotoModal()" class="text-slate-400 hover:text-white text-lg">&times;</button>
-      </div>
-      <div class="p-4 bg-black flex items-center justify-center">
-        <img id="modal-img" src="" alt="Full snapshot" class="max-h-80 w-auto rounded object-contain">
-      </div>
-      <div class="p-4 flex items-center justify-between text-xs text-slate-400">
-        <span id="modal-meta" class="font-mono"></span>
-        <a id="modal-download" href="#" download="snapshot.jpg" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg font-medium">Download</a>
-      </div>
-    </div>
-  </div>
-
   <!-- JAVASCRIPT LOGIC & SUPABASE REST INTEGRATION -->
   <script>
     // ==========================================
@@ -340,7 +319,6 @@
     let timerInterval = null;
     let totalCycleSeconds = CONFIG.STANDARD_INTERVAL_SECONDS;
     let remainingSeconds = totalCycleSeconds;
-    let currentPair = { photo1: null, photo2: null };
 
     // DOM Elements
     const video = document.getElementById('camera-video');
@@ -360,13 +338,10 @@
     const wakelockPill = document.getElementById('wakelock-pill');
     const wakelockDot = document.getElementById('wakelock-dot');
     const wakelockLabel = document.getElementById('wakelock-label');
-    const thumb1 = document.getElementById('thumb-1');
-    const thumb2 = document.getElementById('thumb-2');
-    const thumb1Placeholder = document.getElementById('thumb-1-placeholder');
-    const thumb2Placeholder = document.getElementById('thumb-2-placeholder');
-    const thumb1Badge = document.getElementById('thumb-1-badge');
-    const thumb2Badge = document.getElementById('thumb-2-badge');
-    const pairTimeTag = document.getElementById('pair-time-tag');
+    const transPath1 = document.getElementById('trans-path-1');
+    const transStatus1 = document.getElementById('trans-status-1');
+    const transPath2 = document.getElementById('trans-path-2');
+    const transStatus2 = document.getElementById('trans-status-2');
 
     // Init persistent device ID
     const savedDeviceId = localStorage.getItem('sec_device_id') || CONFIG.DEFAULT_DEVICE_ID;
@@ -538,8 +513,6 @@
 
       const deviceId = getDeviceId();
       const ts = getTimestampString();
-      const displayTime = new Date().toLocaleTimeString();
-      pairTimeTag.innerText = `Cycle: ${displayTime}`;
 
       try {
         // --- Photo #1 (0s) ---
@@ -547,24 +520,20 @@
         const shot1 = await captureSilentFrame();
         const path1 = `${deviceId}/photo_${ts}_1.jpg`;
 
-        // Update Thumbnail 1
-        thumb1.src = shot1.dataUrl;
-        thumb1.classList.remove('hidden');
-        thumb1Placeholder.classList.add('hidden');
-        thumb1Badge.innerText = 'Uploading...';
-        thumb1Badge.className = 'absolute bottom-1 right-1 text-[9px] font-mono px-1.5 py-0.5 rounded bg-slate-900/90 text-amber-400 border border-amber-500/30';
-        thumb1Badge.classList.remove('hidden');
-        currentPair.photo1 = { dataUrl: shot1.dataUrl, path: path1, time: displayTime };
+        // Update Cloud Transmission Slot 1
+        transPath1.innerText = `${CONFIG.BUCKET_NAME}/${path1}`;
+        transStatus1.innerText = 'Streaming...';
+        transStatus1.className = 'text-[10px] px-2 py-0.5 rounded bg-cyan-500/10 text-cyan-400 font-semibold';
 
-        // Upload Photo #1
+        // Upload Photo #1 directly to Supabase Storage
         try {
           const uploadedPath1 = await uploadToSupabase(path1, shot1.blob);
-          thumb1Badge.innerText = 'Uploaded';
-          thumb1Badge.className = 'absolute bottom-1 right-1 text-[9px] font-mono px-1.5 py-0.5 rounded bg-slate-900/90 text-emerald-400 border border-emerald-500/30';
-          addLog(`✅ Snapshot 1/2 uploaded to Supabase: ${uploadedPath1}`, 'success');
+          transStatus1.innerText = 'In Cloud';
+          transStatus1.className = 'text-[10px] px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 font-semibold';
+          addLog(`✅ Snapshot 1/2 stored in Supabase: ${uploadedPath1} (Not saved on device)`, 'success');
         } catch (upErr) {
-          thumb1Badge.innerText = 'Upload Err';
-          thumb1Badge.className = 'absolute bottom-1 right-1 text-[9px] font-mono px-1.5 py-0.5 rounded bg-slate-900/90 text-rose-400 border border-rose-500/30';
+          transStatus1.innerText = 'Failed';
+          transStatus1.className = 'text-[10px] px-2 py-0.5 rounded bg-rose-500/10 text-rose-400 font-semibold';
           addLog(`❌ Snapshot 1/2 upload failed: ${upErr.message}`, 'error', `Target: ${path1}`);
         }
 
@@ -577,24 +546,20 @@
         const shot2 = await captureSilentFrame();
         const path2 = `${deviceId}/photo_${ts}_2.jpg`;
 
-        // Update Thumbnail 2
-        thumb2.src = shot2.dataUrl;
-        thumb2.classList.remove('hidden');
-        thumb2Placeholder.classList.add('hidden');
-        thumb2Badge.innerText = 'Uploading...';
-        thumb2Badge.className = 'absolute bottom-1 right-1 text-[9px] font-mono px-1.5 py-0.5 rounded bg-slate-900/90 text-amber-400 border border-amber-500/30';
-        thumb2Badge.classList.remove('hidden');
-        currentPair.photo2 = { dataUrl: shot2.dataUrl, path: path2, time: new Date().toLocaleTimeString() };
+        // Update Cloud Transmission Slot 2
+        transPath2.innerText = `${CONFIG.BUCKET_NAME}/${path2}`;
+        transStatus2.innerText = 'Streaming...';
+        transStatus2.className = 'text-[10px] px-2 py-0.5 rounded bg-cyan-500/10 text-cyan-400 font-semibold';
 
-        // Upload Photo #2
+        // Upload Photo #2 directly to Supabase Storage
         try {
           const uploadedPath2 = await uploadToSupabase(path2, shot2.blob);
-          thumb2Badge.innerText = 'Uploaded';
-          thumb2Badge.className = 'absolute bottom-1 right-1 text-[9px] font-mono px-1.5 py-0.5 rounded bg-slate-900/90 text-emerald-400 border border-emerald-500/30';
-          addLog(`✅ Snapshot 2/2 uploaded to Supabase: ${uploadedPath2}`, 'success');
+          transStatus2.innerText = 'In Cloud';
+          transStatus2.className = 'text-[10px] px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 font-semibold';
+          addLog(`✅ Snapshot 2/2 stored in Supabase: ${uploadedPath2} (Not saved on device)`, 'success');
         } catch (upErr2) {
-          thumb2Badge.innerText = 'Upload Err';
-          thumb2Badge.className = 'absolute bottom-1 right-1 text-[9px] font-mono px-1.5 py-0.5 rounded bg-slate-900/90 text-rose-400 border border-rose-500/30';
+          transStatus2.innerText = 'Failed';
+          transStatus2.className = 'text-[10px] px-2 py-0.5 rounded bg-rose-500/10 text-rose-400 font-semibold';
           addLog(`❌ Snapshot 2/2 upload failed: ${upErr2.message}`, 'error', `Target: ${path2}`);
         }
 
@@ -729,23 +694,8 @@
     }
 
     // ==========================================
-    // 9. PHOTO MODAL & CONNECTION TESTER
+    // 9. SUPABASE CONNECTION TESTER
     // ==========================================
-    function openPhotoModal(index) {
-      const p = index === 1 ? currentPair.photo1 : currentPair.photo2;
-      if (!p) return;
-      document.getElementById('modal-img').src = p.dataUrl;
-      document.getElementById('modal-title').innerText = `Snapshot #${index} - ${p.time}`;
-      document.getElementById('modal-meta').innerText = p.path;
-      document.getElementById('modal-download').href = p.dataUrl;
-      document.getElementById('modal-download').download = `photo_${index}.jpg`;
-      document.getElementById('photo-modal').classList.remove('hidden');
-    }
-
-    function closePhotoModal() {
-      document.getElementById('photo-modal').classList.add('hidden');
-    }
-
     async function testCloudConnection() {
       addLog(`Testing connection to Supabase bucket "${CONFIG.BUCKET_NAME}"...`, 'info');
       try {

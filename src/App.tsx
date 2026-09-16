@@ -3,9 +3,8 @@ import { Header } from './components/Header';
 import { LiveCameraView } from './components/LiveCameraView';
 import { CountdownCard } from './components/CountdownCard';
 import { DeviceSettingsCard } from './components/DeviceSettingsCard';
-import { ThumbnailPreview } from './components/ThumbnailPreview';
+import { CloudTransferStatusCard } from './components/CloudTransferStatusCard';
 import { StatusLogBox } from './components/StatusLogBox';
-import { PhotoModal } from './components/PhotoModal';
 import { SecurityConfig, CapturedPhoto, PhotoPair, LogEvent } from './types';
 import { WakeLockController } from './utils/wakeLock';
 import {
@@ -25,14 +24,29 @@ const DEFAULT_CONFIG: SecurityConfig = {
 };
 
 export default function App() {
-  // --- Persistent Configuration ---
+  // --- Persistent Configuration with automatic sanitation ---
   const [config, setConfig] = useState<SecurityConfig>(() => {
-    const storedBucket = localStorage.getItem('sec_supabase_bucket');
+    const rawUrl = localStorage.getItem('sec_supabase_url')?.trim();
+    const rawKey = localStorage.getItem('sec_supabase_anon_key')?.trim();
+    const rawBucket = localStorage.getItem('sec_supabase_bucket')?.trim();
+    const rawDevice = localStorage.getItem('sec_device_id')?.trim();
+
+    const validUrl = (rawUrl && !rawUrl.includes('xyzcompany')) ? rawUrl : DEFAULT_CONFIG.supabaseUrl;
+    const validKey = (rawKey && rawKey.length > 20) ? rawKey : DEFAULT_CONFIG.supabaseAnonKey;
+    const validBucket = (rawBucket && rawBucket !== 'security-photos') ? rawBucket : DEFAULT_CONFIG.supabaseBucket;
+    const validDevice = rawDevice || DEFAULT_CONFIG.deviceId;
+
+    // Persist corrected defaults so old cache cannot break it
+    localStorage.setItem('sec_supabase_url', validUrl);
+    localStorage.setItem('sec_supabase_anon_key', validKey);
+    localStorage.setItem('sec_supabase_bucket', validBucket);
+    localStorage.setItem('sec_device_id', validDevice);
+
     return {
-      deviceId: localStorage.getItem('sec_device_id') || DEFAULT_CONFIG.deviceId,
-      supabaseUrl: localStorage.getItem('sec_supabase_url') || DEFAULT_CONFIG.supabaseUrl,
-      supabaseAnonKey: localStorage.getItem('sec_supabase_anon_key') || DEFAULT_CONFIG.supabaseAnonKey,
-      supabaseBucket: (storedBucket && storedBucket !== 'security-photos') ? storedBucket : DEFAULT_CONFIG.supabaseBucket,
+      deviceId: validDevice,
+      supabaseUrl: validUrl,
+      supabaseAnonKey: validKey,
+      supabaseBucket: validBucket,
       testMode: localStorage.getItem('sec_test_mode') === 'true',
     };
   });
@@ -73,7 +87,6 @@ export default function App() {
 
   // --- Captured Photos & Logs ---
   const [currentPair, setCurrentPair] = useState<PhotoPair | null>(null);
-  const [selectedModalPhoto, setSelectedModalPhoto] = useState<CapturedPhoto | null>(null);
   const [logs, setLogs] = useState<LogEvent[]>([
     {
       id: 'init-1',
@@ -160,6 +173,13 @@ export default function App() {
     setCurrentPair(newPair);
 
     try {
+      // Guaranteed credentials fallback
+      const targetUrl = config.supabaseUrl || DEFAULT_CONFIG.supabaseUrl;
+      const targetKey = config.supabaseAnonKey || DEFAULT_CONFIG.supabaseAnonKey;
+      const targetBucket = (config.supabaseBucket && config.supabaseBucket !== 'security-photos')
+        ? config.supabaseBucket
+        : DEFAULT_CONFIG.supabaseBucket;
+
       // ----------------------------------------------------
       // 1. Photo #1: Immediate snapshot (Zero flash/torch, silent canvas)
       // ----------------------------------------------------
@@ -170,47 +190,38 @@ export default function App() {
         id: `photo-${Date.now()}-1`,
         index: 1,
         timestamp: cycleTimestamp,
-        dataUrl: shot1.dataUrl,
+        dataUrl: '', // Zero local device display - direct transmission only
         blobSize: shot1.blob.size,
         uploadStatus: 'uploading',
-        cloudPath: path1,
+        cloudPath: `${targetBucket}/${path1}`,
       };
 
       setCurrentPair((prev) => (prev ? { ...prev, photo1: capturedPhoto1 } : null));
-      addLog(`Snapshot 1/2 captured silently (${(shot1.blob.size / 1024).toFixed(1)} KB).`, 'info');
+      addLog(`Snapshot 1/2 captured silently (${(shot1.blob.size / 1024).toFixed(1)} KB). Streaming to Supabase...`, 'info');
 
-      // Upload Photo #1 to Supabase
-      if (!config.supabaseUrl || !config.supabaseAnonKey || !config.supabaseBucket) {
-        capturedPhoto1.uploadStatus = 'skipped';
+      // Upload Photo #1 directly to Supabase Storage
+      const uploadRes1 = await uploadToSupabaseStorage(
+        targetUrl,
+        targetKey,
+        targetBucket,
+        path1,
+        shot1.blob
+      );
+
+      if (uploadRes1.success) {
+        capturedPhoto1.uploadStatus = 'success';
         addLog(
-          `Photo 1 saved locally. Supabase credentials not set, skipping remote upload.`,
-          'warning',
-          `Path target would be: ${path1}`
+          `✅ Photo 1/2 stored in Supabase: ${uploadRes1.cloudPath} (Not displayed on device)`,
+          'success'
         );
       } else {
-        const uploadRes1 = await uploadToSupabaseStorage(
-          config.supabaseUrl,
-          config.supabaseAnonKey,
-          config.supabaseBucket,
-          path1,
-          shot1.blob
+        capturedPhoto1.uploadStatus = 'error';
+        capturedPhoto1.uploadError = uploadRes1.error;
+        addLog(
+          `❌ Photo 1/2 upload failed: ${uploadRes1.error}`,
+          'error',
+          `Target: ${targetBucket}/${path1}`
         );
-
-        if (uploadRes1.success) {
-          capturedPhoto1.uploadStatus = 'success';
-          addLog(
-            `✅ Photo 1/2 uploaded successfully to Supabase: ${uploadRes1.cloudPath}`,
-            'success'
-          );
-        } else {
-          capturedPhoto1.uploadStatus = 'error';
-          capturedPhoto1.uploadError = uploadRes1.error;
-          addLog(
-            `❌ Photo 1/2 upload failed: ${uploadRes1.error}`,
-            'error',
-            `Target: ${path1}`
-          );
-        }
       }
 
       setCurrentPair((prev) => (prev ? { ...prev, photo1: { ...capturedPhoto1 } } : null));
@@ -233,47 +244,38 @@ export default function App() {
         id: `photo-${Date.now()}-2`,
         index: 2,
         timestamp: new Date().toLocaleTimeString(),
-        dataUrl: shot2.dataUrl,
+        dataUrl: '', // Zero local device display - direct transmission only
         blobSize: shot2.blob.size,
         uploadStatus: 'uploading',
-        cloudPath: path2,
+        cloudPath: `${targetBucket}/${path2}`,
       };
 
       setCurrentPair((prev) => (prev ? { ...prev, photo2: capturedPhoto2 } : null));
-      addLog(`Snapshot 2/2 captured silently (${(shot2.blob.size / 1024).toFixed(1)} KB).`, 'info');
+      addLog(`Snapshot 2/2 captured silently (${(shot2.blob.size / 1024).toFixed(1)} KB). Streaming to Supabase...`, 'info');
 
-      // Upload Photo #2 to Supabase
-      if (!config.supabaseUrl || !config.supabaseAnonKey || !config.supabaseBucket) {
-        capturedPhoto2.uploadStatus = 'skipped';
+      // Upload Photo #2 directly to Supabase Storage
+      const uploadRes2 = await uploadToSupabaseStorage(
+        targetUrl,
+        targetKey,
+        targetBucket,
+        path2,
+        shot2.blob
+      );
+
+      if (uploadRes2.success) {
+        capturedPhoto2.uploadStatus = 'success';
         addLog(
-          `Photo 2 saved locally. Supabase credentials not set, skipping remote upload.`,
-          'warning',
-          `Path target would be: ${path2}`
+          `✅ Photo 2/2 stored in Supabase: ${uploadRes2.cloudPath} (Not displayed on device)`,
+          'success'
         );
       } else {
-        const uploadRes2 = await uploadToSupabaseStorage(
-          config.supabaseUrl,
-          config.supabaseAnonKey,
-          config.supabaseBucket,
-          path2,
-          shot2.blob
+        capturedPhoto2.uploadStatus = 'error';
+        capturedPhoto2.uploadError = uploadRes2.error;
+        addLog(
+          `❌ Photo 2/2 upload failed: ${uploadRes2.error}`,
+          'error',
+          `Target: ${targetBucket}/${path2}`
         );
-
-        if (uploadRes2.success) {
-          capturedPhoto2.uploadStatus = 'success';
-          addLog(
-            `✅ Photo 2/2 uploaded successfully to Supabase: ${uploadRes2.cloudPath}`,
-            'success'
-          );
-        } else {
-          capturedPhoto2.uploadStatus = 'error';
-          capturedPhoto2.uploadError = uploadRes2.error;
-          addLog(
-            `❌ Photo 2/2 upload failed: ${uploadRes2.error}`,
-            'error',
-            `Target: ${path2}`
-          );
-        }
       }
 
       setCurrentPair((prev) => (prev ? { ...prev, photo2: { ...capturedPhoto2 }, status: 'completed' } : null));
@@ -442,10 +444,11 @@ export default function App() {
             onAddLog={addLog}
           />
 
-          {/* Thumbnail Preview Section (Most recently captured photo pair) */}
-          <ThumbnailPreview
+          {/* Direct Cloud Transfer Status Monitor (No local device photo display) */}
+          <CloudTransferStatusCard
             currentPair={currentPair}
-            onSelectPhoto={(photo) => setSelectedModalPhoto(photo)}
+            bucketName={config.supabaseBucket}
+            deviceId={config.deviceId}
           />
 
           {/* Scrollable Status Log Box */}
@@ -455,13 +458,6 @@ export default function App() {
           />
         </div>
       </main>
-
-      {/* Full Photo Preview Modal */}
-      <PhotoModal
-        photo={selectedModalPhoto}
-        deviceId={config.deviceId}
-        onClose={() => setSelectedModalPhoto(null)}
-      />
     </div>
   );
 }

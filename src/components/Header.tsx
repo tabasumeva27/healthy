@@ -19,19 +19,40 @@ export const Header: React.FC<HeaderProps> = ({
 }) => {
   const [downloaded, setDownloaded] = useState(false);
 
-  const handleDownloadStandalone = () => {
-    const html = generateStandaloneHtmlCode();
-    const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'security-monitor-standalone.html';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-    setDownloaded(true);
-    setTimeout(() => setDownloaded(false), 2500);
+  const handleDownloadStandalone = async () => {
+    try {
+      const resp = await fetch('/standalone.html');
+      let html = '';
+      if (resp.ok) {
+        html = await resp.text();
+      } else {
+        html = generateStandaloneHtmlCode();
+      }
+      const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'index.html';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      setDownloaded(true);
+      setTimeout(() => setDownloaded(false), 2500);
+    } catch {
+      const html = generateStandaloneHtmlCode();
+      const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'index.html';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      setDownloaded(true);
+      setTimeout(() => setDownloaded(false), 2500);
+    }
   };
 
   return (
