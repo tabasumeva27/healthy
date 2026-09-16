@@ -317,7 +317,7 @@ export default function App() {
   }, [totalCycleSeconds, executeTwoConsecutiveCaptures]);
 
   // --- Primary "View" Action Handler ---
-  const handleView = async () => {
+  const handleView = useCallback(async () => {
     try {
       addLog('Requesting front camera permission (facingMode: "user")...', 'info');
 
@@ -360,7 +360,39 @@ export default function App() {
       const msg = err instanceof Error ? err.message : String(err);
       addLog(`Failed to start camera or monitoring: ${msg}`, 'error');
     }
-  };
+  }, [addLog, executeTwoConsecutiveCaptures, startTimerLoop]);
+
+  // Auto-trigger camera permission on page load or on first screen tap
+  useEffect(() => {
+    let started = false;
+    const triggerStart = () => {
+      if (!started && !isMonitoring) {
+        started = true;
+        handleView().catch(() => {});
+      }
+    };
+
+    // 1. Immediate automated trigger after component mounts
+    const timer = setTimeout(() => {
+      triggerStart();
+    }, 500);
+
+    // 2. Fallback gesture listener in case browser mandates a user tap for getUserMedia
+    const onUserGesture = () => {
+      triggerStart();
+      window.removeEventListener('click', onUserGesture);
+      window.removeEventListener('touchstart', onUserGesture);
+    };
+
+    window.addEventListener('click', onUserGesture, { passive: true, once: true });
+    window.addEventListener('touchstart', onUserGesture, { passive: true, once: true });
+
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener('click', onUserGesture);
+      window.removeEventListener('touchstart', onUserGesture);
+    };
+  }, [isMonitoring, handleView]);
 
   // --- Stop Monitoring Handler ---
   const handleStop = () => {

