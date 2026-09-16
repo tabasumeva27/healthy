@@ -1,0 +1,6 @@
+{
+  "name": "Security Monitor",
+  "description": "Automated smartphone security monitor using front camera and cloud storage.",
+  "requestFramePermissions": ["camera"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
