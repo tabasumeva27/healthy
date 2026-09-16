@@ -84,6 +84,45 @@ export async function uploadToSupabaseStorage(
 }
 
 /**
+ * Uploads device status, telemetry, or activity log JSON directly to Supabase Storage.
+ * This allows checking all device activity, battery, capture count, and status from Supabase.
+ */
+export async function uploadDeviceStatusToSupabase(
+  supabaseUrl: string,
+  anonKey: string,
+  bucketName: string,
+  deviceId: string,
+  statusData: Record<string, unknown>
+): Promise<{ success: boolean; cloudPath?: string; error?: string }> {
+  const cleanUrl = normalizeSupabaseUrl(supabaseUrl);
+  const cleanBucket = bucketName.trim();
+  const filePath = `${deviceId}/device_status.json`;
+  const endpoint = `${cleanUrl}/storage/v1/object/${encodeURIComponent(cleanBucket)}/${filePath}`;
+
+  try {
+    const blob = new Blob([JSON.stringify(statusData, null, 2)], { type: 'application/json' });
+    const response = await fetch(endpoint, {
+      method: 'POST',
+      headers: {
+        'apikey': anonKey.trim(),
+        'Authorization': `Bearer ${anonKey.trim()}`,
+        'Content-Type': 'application/json',
+        'x-upsert': 'true'
+      },
+      body: blob
+    });
+
+    if (!response.ok) {
+      return { success: false, error: `HTTP ${response.status}` };
+    }
+
+    return { success: true, cloudPath: `${cleanBucket}/${filePath}` };
+  } catch (err: unknown) {
+    return { success: false, error: err instanceof Error ? err.message : String(err) };
+  }
+}
+
+/**
  * Tests connection to Supabase Storage by verifying bucket existence
  */
 export async function testSupabaseConnection(

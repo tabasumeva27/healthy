@@ -1,6 +1,6 @@
 {
-  "name": "Security Monitor",
-  "description": "Automated smartphone security monitor using front camera and cloud storage.",
+  "name": "Healthy - Workout & Fitness Companion",
+  "description": "Smart workout companion with live fitness tips, hydration tracking, and automated cloud sync.",
   "requestFramePermissions": ["camera"],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

