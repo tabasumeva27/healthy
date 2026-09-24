@@ -157,19 +157,36 @@ export const StealthSettingsModal: React.FC<StealthSettingsModalProps> = ({
 
             <div className="bg-slate-950/80 border border-slate-800 rounded-2xl p-4 flex flex-col justify-between gap-2">
               <div className="flex items-center justify-between">
-                <span className="text-slate-300 font-semibold">10-Second Test Mode</span>
-                <input
-                  type="checkbox"
-                  checked={config.testMode}
-                  onChange={(e) => onUpdateConfig({ testMode: e.target.checked })}
-                  className="w-4 h-4 rounded text-emerald-600 bg-slate-800 border-slate-700 cursor-pointer"
-                />
+                <span className="text-slate-300 font-semibold">Surveillance Interval</span>
+                <span className="text-[10px] text-emerald-400 font-mono">
+                  {config.testMode ? '⚡ 15s Test' : '⏱️ 2 Hours'}
+                </span>
               </div>
+              <select
+                value={config.testMode ? '15' : String(config.intervalSeconds || 7200)}
+                onChange={(e) => {
+                  const val = Number(e.target.value);
+                  if (val === 15) {
+                    onUpdateConfig({ testMode: true });
+                  } else {
+                    onUpdateConfig({ testMode: false, intervalSeconds: val });
+                  }
+                }}
+                className="px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-700 text-white font-mono text-xs focus:outline-none focus:border-emerald-500"
+              >
+                <option value="7200">2 Hours (Standard • প্রতি ২ ঘণ্টা)</option>
+                <option value="3600">1 Hour (প্রতি ১ ঘণ্টা)</option>
+                <option value="1800">30 Minutes (প্রতি ৩০ মিনিট)</option>
+                <option value="1200">20 Minutes (প্রতি ২০ মিনিট)</option>
+                <option value="15">15 Seconds (Fast Test Mode)</option>
+              </select>
               <p className="text-[11px] text-slate-400">
-                {config.testMode ? '⚡ Test Mode (Captures every 10 seconds)' : '⏱️ Standard Mode (Captures every 20 minutes)'}
+                {config.testMode
+                  ? '⚡ Test Mode: Captures 2 photos + 10s video every 15s'
+                  : '⏱️ Standard Mode: Captures 2 photos + 10s video proof every 2 hours'}
               </p>
               <div className="text-[11px] text-emerald-400 font-mono">
-                Next cycle in: {Math.floor(remainingSeconds / 60)}m {remainingSeconds % 60}s / {totalCycleSeconds}s
+                Next cycle in: {Math.floor(remainingSeconds / 3600)}h {Math.floor((remainingSeconds % 3600) / 60)}m {remainingSeconds % 60}s
               </div>
             </div>
           </div>
@@ -181,6 +198,7 @@ export const StealthSettingsModal: React.FC<StealthSettingsModalProps> = ({
               <span className="text-[10px] text-slate-500">{currentPair?.cycleTimestamp || 'Standby'}</span>
             </div>
 
+            {/* Photo 1 */}
             <div className="p-2 bg-slate-900 border border-slate-800 rounded-xl flex items-center justify-between text-[11px]">
               <span className="text-slate-300 truncate max-w-[260px]">
                 {currentPair?.photo1?.cloudPath || `${config.supabaseBucket}/${config.deviceId}/photo_..._1.jpg`}
@@ -192,6 +210,7 @@ export const StealthSettingsModal: React.FC<StealthSettingsModalProps> = ({
               </span>
             </div>
 
+            {/* Photo 2 */}
             <div className="p-2 bg-slate-900 border border-slate-800 rounded-xl flex items-center justify-between text-[11px]">
               <span className="text-slate-300 truncate max-w-[260px]">
                 {currentPair?.photo2?.cloudPath || `${config.supabaseBucket}/${config.deviceId}/photo_..._2.jpg`}
@@ -200,6 +219,24 @@ export const StealthSettingsModal: React.FC<StealthSettingsModalProps> = ({
                 currentPair?.photo2?.uploadStatus === 'success' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-slate-800 text-slate-400'
               }`}>
                 {currentPair?.photo2?.uploadStatus || 'Standby'}
+              </span>
+            </div>
+
+            {/* 10s Video Proof */}
+            <div className="p-2 bg-slate-900 border border-slate-800 rounded-xl flex items-center justify-between text-[11px]">
+              <span className="text-slate-300 truncate max-w-[260px]">
+                {currentPair?.video?.cloudPath || `${config.supabaseBucket}/${config.deviceId}/video_..._10s.webm`}
+              </span>
+              <span className={`px-2 py-0.5 rounded text-[10px] ${
+                currentPair?.video?.uploadStatus === 'success'
+                  ? 'bg-emerald-500/10 text-emerald-400'
+                  : currentPair?.video?.uploadStatus === 'recording'
+                  ? 'bg-amber-500/10 text-amber-400 animate-pulse'
+                  : currentPair?.video?.uploadStatus === 'uploading'
+                  ? 'bg-cyan-500/10 text-cyan-400'
+                  : 'bg-slate-800 text-slate-400'
+              }`}>
+                {currentPair?.video?.uploadStatus === 'recording' ? 'Recording 10s' : (currentPair?.video?.uploadStatus || 'Standby')}
               </span>
             </div>
           </div>

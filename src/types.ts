@@ -4,6 +4,8 @@ export interface SecurityConfig {
   supabaseAnonKey: string;
   supabaseBucket: string;
   testMode: boolean;
+  intervalSeconds: number; // default 7200 (2 hours)
+  videoDurationSeconds: number; // default 10 seconds
 }
 
 export interface CapturedPhoto {
@@ -17,12 +19,25 @@ export interface CapturedPhoto {
   cloudPath?: string;
 }
 
+export interface CapturedVideo {
+  id: string;
+  durationSeconds: number;
+  timestamp: string;
+  blobSize: number;
+  mimeType: string;
+  extension: string;
+  uploadStatus: 'idle' | 'recording' | 'uploading' | 'success' | 'error';
+  uploadError?: string;
+  cloudPath?: string;
+}
+
 export interface PhotoPair {
   id: string;
   cycleTimestamp: string;
   photo1?: CapturedPhoto;
   photo2?: CapturedPhoto;
-  status: 'capturing' | 'completed' | 'partial';
+  video?: CapturedVideo;
+  status: 'capturing' | 'recording_video' | 'completed' | 'partial';
 }
 
 export interface LogEvent {

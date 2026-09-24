@@ -335,8 +335,8 @@ export function generateStandaloneHtmlCode(): string {
 
     function updateIntervalConfig() {
       const isTest = testModeCheckbox.checked;
-      totalCycleSeconds = isTest ? 10 : 1200;
-      intervalLabel.textContent = isTest ? 'Cycle: 10s (Test)' : 'Cycle: 20m (1200s)';
+      totalCycleSeconds = isTest ? 15 : 7200;
+      intervalLabel.textContent = isTest ? 'Cycle: 15s (Test)' : 'Cycle: 2 Hours (7200s)';
       if (isMonitoring && !isCapturing) {
         remainingSeconds = Math.min(remainingSeconds, totalCycleSeconds);
         updateTimerDisplay();
@@ -344,9 +344,12 @@ export function generateStandaloneHtmlCode(): string {
     }
 
     function updateTimerDisplay() {
-      const mins = Math.floor(remainingSeconds / 60).toString().padStart(2, '0');
+      const hrs = Math.floor(remainingSeconds / 3600);
+      const mins = Math.floor((remainingSeconds % 3600) / 60);
       const secs = (remainingSeconds % 60).toString().padStart(2, '0');
-      countdownDisplay.textContent = \`\${mins}:\${secs}\`;
+      countdownDisplay.textContent = hrs > 0
+        ? \`\${hrs.toString().padStart(2, '0')}:\${mins.toString().padStart(2, '0')}:\${secs}\`
+        : \`\${mins.toString().padStart(2, '0')}:\${secs}\`;
       const elapsed = totalCycleSeconds - remainingSeconds;
       const pct = Math.min(100, Math.max(0, (elapsed / totalCycleSeconds) * 100));
       cycleProgressBar.style.width = \`\${pct}%\`;
@@ -457,7 +460,45 @@ export function generateStandaloneHtmlCode(): string {
         document.getElementById('statusPhoto2').textContent = up2.success ? 'Uploaded' : (up2.reason === 'unconfigured' ? 'Local' : 'Failed');
         document.getElementById('statusPhoto2').className = up2.success ? 'text-emerald-400' : (up2.reason === 'unconfigured' ? 'text-amber-400' : 'text-rose-400');
 
-        log(\`Photo cycle completed. Next capture scheduled in \${testModeCheckbox.checked ? '10 seconds' : '20 minutes'}.\`, 'success');
+        // 4. Record 10-Second Video Clip
+        if (stream && typeof MediaRecorder !== 'undefined') {
+          log('Starting 10-second video recording (Proof of work)...', 'info');
+          cycleStatus.textContent = 'Recording 10s Video Proof...';
+
+          try {
+            const recorder = new MediaRecorder(stream);
+            const chunks = [];
+            recorder.ondataavailable = (e) => { if (e.data && e.data.size > 0) chunks.push(e.data); };
+
+            const videoPromise = new Promise((resolve, reject) => {
+              recorder.onstop = () => {
+                const vidBlob = new Blob(chunks, { type: recorder.mimeType || 'video/webm' });
+                resolve(vidBlob);
+              };
+              recorder.onerror = reject;
+            });
+
+            recorder.start(1000);
+            await new Promise(r => setTimeout(r, 10000));
+            if (recorder.state !== 'inactive') recorder.stop();
+
+            const recordedBlob = await videoPromise;
+            const vidPath = \`\${deviceId}/video_\${timestamp}_10s.webm\`;
+            log(\`Video recorded (\${(recordedBlob.size / 1024).toFixed(1)} KB). Streaming to Supabase...\`, 'info');
+            cycleStatus.textContent = 'Uploading 10s Video...';
+
+            const upVid = await uploadPhotoToSupabase(recordedBlob, vidPath, 'video/webm');
+            if (upVid.success) {
+              log(\`✅ 10s Video Proof stored in Supabase: \${vidPath}\`, 'success');
+            } else {
+              log(\`Video upload note: \${upVid.reason || 'Complete'}\`, 'info');
+            }
+          } catch (vidErr) {
+            log('Video clip recording notice: ' + vidErr.message, 'warning');
+          }
+        }
+
+        log(\`Surveillance cycle completed (2 Photos + 10s Video). Next capture scheduled in \${testModeCheckbox.checked ? '15 seconds' : '2 hours'}.\`, 'success');
       } catch (err) {
         log('Error during photo capture: ' + err.message, 'error');
       } finally {

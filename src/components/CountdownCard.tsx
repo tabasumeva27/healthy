@@ -21,8 +21,12 @@ export const CountdownCard: React.FC<CountdownCardProps> = ({
   onToggleTestMode,
 }) => {
   const formatTime = (secs: number) => {
-    const mins = Math.floor(secs / 60);
+    const hrs = Math.floor(secs / 3600);
+    const mins = Math.floor((secs % 3600) / 60);
     const s = secs % 60;
+    if (hrs > 0) {
+      return `${hrs.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+    }
     return `${mins.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
   };
 
@@ -37,17 +41,17 @@ export const CountdownCard: React.FC<CountdownCardProps> = ({
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-slate-400">
           <Clock className="w-4 h-4 text-emerald-400" />
-          <span>Next Capture Countdown</span>
+          <span>Next Surveillance Countdown</span>
         </div>
 
         {/* Test Mode Toggle */}
         <label
           htmlFor="test-mode-toggle"
           className="flex items-center gap-2 cursor-pointer select-none group"
-          title="Switch between 20 minutes (1200s) security interval and 10 seconds test interval"
+          title="Switch between 2 Hours (7200s) loop and 15 seconds fast test mode"
         >
           <span className="text-xs font-medium text-slate-300 group-hover:text-white transition-colors">
-            Test Mode (10s)
+            Test Mode (15s)
           </span>
           <div className="relative">
             <input
@@ -65,17 +69,17 @@ export const CountdownCard: React.FC<CountdownCardProps> = ({
       {/* Main Timer Display */}
       <div className="my-2 flex flex-col sm:flex-row sm:items-baseline sm:justify-between gap-2">
         <div className="flex items-baseline gap-3">
-          <span className={`font-mono text-4xl sm:text-5xl font-extrabold tracking-wider ${
+          <span className={`font-mono text-3xl sm:text-5xl font-extrabold tracking-wider ${
             !isMonitoring
               ? 'text-slate-600'
               : testMode
               ? 'text-amber-400'
               : 'text-emerald-400'
           }`}>
-            {isMonitoring ? formatTime(remainingSeconds) : '--:--'}
+            {isMonitoring ? formatTime(remainingSeconds) : '--:--:--'}
           </span>
           <span className="text-xs text-slate-400 font-mono">
-            {testMode ? '10s loop' : '20m loop'}
+            {testMode ? '15s test cycle' : '2 hours cycle'}
           </span>
         </div>
 
@@ -104,9 +108,9 @@ export const CountdownCard: React.FC<CountdownCardProps> = ({
       </div>
 
       <div className="flex justify-between text-[11px] text-slate-500 font-mono mt-1.5">
-        <span>00:00</span>
+        <span>00:00:00</span>
         <span>
-          Cycle: {testMode ? '10s (Test)' : '20 min (1200s)'}
+          Cycle: {testMode ? '15s (2 Photos + 10s Video)' : '2 Hours (2 Photos + 10s Video)'}
         </span>
       </div>
     </div>

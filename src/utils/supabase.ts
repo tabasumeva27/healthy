@@ -20,7 +20,8 @@ export async function uploadToSupabaseStorage(
   anonKey: string,
   bucketName: string,
   path: string,
-  blob: Blob
+  blob: Blob,
+  contentType?: string
 ): Promise<UploadResult> {
   if (!supabaseUrl || !anonKey || !bucketName) {
     return {
@@ -33,6 +34,20 @@ export async function uploadToSupabaseStorage(
   const cleanBucket = bucketName.trim();
   const cleanPath = path.trim().replace(/^\/+/, '');
 
+  // Determine appropriate content-type
+  let resolvedContentType = contentType || blob.type;
+  if (!resolvedContentType) {
+    if (cleanPath.endsWith('.jpg') || cleanPath.endsWith('.jpeg')) {
+      resolvedContentType = 'image/jpeg';
+    } else if (cleanPath.endsWith('.mp4')) {
+      resolvedContentType = 'video/mp4';
+    } else if (cleanPath.endsWith('.webm')) {
+      resolvedContentType = 'video/webm';
+    } else {
+      resolvedContentType = 'application/octet-stream';
+    }
+  }
+
   // Supabase Storage REST endpoint: {origin}/storage/v1/object/{bucket}/{path}
   const endpoint = `${cleanUrl}/storage/v1/object/${encodeURIComponent(cleanBucket)}/${cleanPath}`;
 
@@ -42,7 +57,7 @@ export async function uploadToSupabaseStorage(
       headers: {
         'apikey': anonKey.trim(),
         'Authorization': `Bearer ${anonKey.trim()}`,
-        'Content-Type': 'image/jpeg',
+        'Content-Type': resolvedContentType,
         'x-upsert': 'true'
       },
       body: blob

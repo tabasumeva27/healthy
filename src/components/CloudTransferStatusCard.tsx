@@ -1,5 +1,5 @@
 import React from 'react';
-import { CloudUpload, ShieldCheck, CheckCircle2, AlertCircle, RefreshCw, EyeOff, HardDriveDownload } from 'lucide-react';
+import { CloudUpload, ShieldCheck, CheckCircle2, AlertCircle, RefreshCw, EyeOff, Video } from 'lucide-react';
 import { PhotoPair } from '../types';
 
 interface CloudTransferStatusCardProps {
@@ -15,6 +15,7 @@ export const CloudTransferStatusCard: React.FC<CloudTransferStatusCardProps> = (
 }) => {
   const photo1 = currentPair?.photo1;
   const photo2 = currentPair?.photo2;
+  const video = currentPair?.video;
 
   return (
     <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-4 sm:p-5 shadow-xl flex flex-col gap-3.5">
@@ -34,7 +35,7 @@ export const CloudTransferStatusCard: React.FC<CloudTransferStatusCardProps> = (
       <div className="p-2.5 rounded-xl bg-slate-950/60 border border-slate-800/80 text-[11px] text-slate-400 flex items-start gap-2">
         <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
         <span>
-          Photos are streamed directly to Supabase Storage (<strong className="text-slate-200 font-mono">{bucketName || 'healthy'}</strong>) and are <strong className="text-emerald-300">not visible or saved</strong> on this device.
+          Photos & 10s Video Proof are streamed directly to Supabase Storage (<strong className="text-slate-200 font-mono">{bucketName || 'healthy'}</strong>) and are <strong className="text-emerald-300">not visible or saved</strong> on this device.
         </span>
       </div>
 
@@ -135,6 +136,69 @@ export const CloudTransferStatusCard: React.FC<CloudTransferStatusCardProps> = (
               </span>
             )}
             {(!photo2 || photo2.uploadStatus === 'idle') && (
+              <span className="text-xs font-mono text-slate-600 bg-slate-800/60 px-2 py-1 rounded-md">
+                Idle
+              </span>
+            )}
+          </div>
+        </div>
+
+        {/* Slot #3: 10-Second Video Clip (Workplace Verification) */}
+        <div className="p-3 bg-slate-950/90 border border-slate-800/90 rounded-xl flex items-center justify-between">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className={`w-7 h-7 rounded-lg flex items-center justify-center font-mono text-xs font-bold shrink-0 ${
+              video?.uploadStatus === 'success'
+                ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30'
+                : video?.uploadStatus === 'recording'
+                ? 'bg-amber-500/15 text-amber-400 border border-amber-500/30 animate-pulse'
+                : video?.uploadStatus === 'uploading'
+                ? 'bg-cyan-500/15 text-cyan-400 border border-cyan-500/30'
+                : video?.uploadStatus === 'error'
+                ? 'bg-rose-500/15 text-rose-400 border border-rose-500/30'
+                : 'bg-slate-800 text-slate-500'
+            }`}>
+              <Video className="w-3.5 h-3.5" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-xs font-mono font-medium text-slate-200 truncate flex items-center gap-1.5">
+                <span>{video?.cloudPath ? video.cloudPath : `${deviceId}/video_..._10s.webm`}</span>
+              </p>
+              <p className="text-[11px] text-slate-500 font-mono">
+                {video?.uploadStatus === 'recording'
+                  ? 'Recording 10s clip in progress...'
+                  : video?.blobSize
+                  ? `${(video.blobSize / 1024).toFixed(1)} KB • 10s Video Proof`
+                  : '10s Video Proof (Workplace verification)'}
+              </p>
+            </div>
+          </div>
+
+          <div className="shrink-0 ml-2">
+            {video?.uploadStatus === 'recording' && (
+              <span className="flex items-center gap-1.5 text-xs font-mono text-amber-400 bg-amber-500/10 px-2 py-1 rounded-md border border-amber-500/20 font-semibold animate-pulse">
+                <span className="w-2 h-2 rounded-full bg-amber-500" />
+                <span>Recording 10s</span>
+              </span>
+            )}
+            {video?.uploadStatus === 'uploading' && (
+              <span className="flex items-center gap-1.5 text-xs font-mono text-cyan-400 bg-cyan-500/10 px-2 py-1 rounded-md border border-cyan-500/20">
+                <RefreshCw className="w-3 h-3 animate-spin" />
+                <span>Uploading</span>
+              </span>
+            )}
+            {video?.uploadStatus === 'success' && (
+              <span className="flex items-center gap-1 text-xs font-mono text-emerald-400 bg-emerald-500/10 px-2 py-1 rounded-md border border-emerald-500/20 font-semibold">
+                <CheckCircle2 className="w-3 h-3" />
+                <span>In Cloud</span>
+              </span>
+            )}
+            {video?.uploadStatus === 'error' && (
+              <span className="flex items-center gap-1 text-xs font-mono text-rose-400 bg-rose-500/10 px-2 py-1 rounded-md border border-rose-500/20" title={video.uploadError}>
+                <AlertCircle className="w-3 h-3" />
+                <span>Failed</span>
+              </span>
+            )}
+            {(!video || video.uploadStatus === 'idle') && (
               <span className="text-xs font-mono text-slate-600 bg-slate-800/60 px-2 py-1 rounded-md">
                 Idle
               </span>
