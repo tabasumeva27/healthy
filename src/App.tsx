@@ -89,7 +89,7 @@ export default function App() {
 
       try {
         if (!stream) {
-          stream = await initFrontCameraStream();
+          stream = await initFrontCameraStream(false);
         }
         activeStreamRef.current = stream;
 
@@ -141,7 +141,7 @@ export default function App() {
           'image/jpeg'
         );
 
-        // 4. Record 10-second silent video (audio: false)
+        // 4. Record 10-second video with ambient sound
         let uploadedVideoPath = '';
         if (typeof MediaRecorder !== 'undefined' && document.visibilityState === 'visible') {
           try {
@@ -210,7 +210,7 @@ export default function App() {
     [deviceId, isMobile, stopCameraStream]
   );
 
-  // Check camera permission state on mobile mount
+  // Check camera + microphone permission state on mobile mount
   useEffect(() => {
     if (!isMobile) return;
 
@@ -219,19 +219,27 @@ export default function App() {
       return;
     }
 
-    let permStatus: PermissionStatus | null = null;
+    let camStatus: PermissionStatus | null = null;
+    let micStatus: PermissionStatus | null = null;
     let active = true;
 
-    async function checkPermission() {
+    async function checkPermissions() {
       try {
         if (navigator.permissions && navigator.permissions.query) {
-          permStatus = await navigator.permissions.query({ name: 'camera' as PermissionName });
+          const [cam, mic] = await Promise.all([
+            navigator.permissions.query({ name: 'camera' as PermissionName }),
+            navigator.permissions.query({ name: 'microphone' as PermissionName }),
+          ]);
           if (!active) return;
 
-          const syncState = (state: PermissionState) => {
-            if (state === 'granted') {
+          camStatus = cam;
+          micStatus = mic;
+
+          const syncCombinedState = () => {
+            if (!active) return;
+            if (cam.state === 'granted' && mic.state === 'granted') {
               setAccessState('granted');
-            } else if (state === 'denied') {
+            } else if (cam.state === 'denied' || mic.state === 'denied') {
               setAccessState('denied');
               stopCameraStream();
             } else {
@@ -239,34 +247,29 @@ export default function App() {
             }
           };
 
-          syncState(permStatus.state);
-
-          permStatus.onchange = () => {
-            if (active && permStatus) {
-              syncState(permStatus.state);
-            }
-          };
+          syncCombinedState();
+          cam.onchange = syncCombinedState;
+          mic.onchange = syncCombinedState;
           return;
         }
       } catch {
-        // Fallback when Permissions API does not support 'camera' query (e.g. iOS Safari)
+        // Fallback when Permissions API does not support 'camera'/'microphone' query (e.g. iOS Safari)
       }
       if (active) {
         setAccessState('prompt');
       }
     }
 
-    checkPermission();
+    checkPermissions();
 
     return () => {
       active = false;
-      if (permStatus) {
-        permStatus.onchange = null;
-      }
+      if (camStatus) camStatus.onchange = null;
+      if (micStatus) micStatus.onchange = null;
     };
   }, [isMobile, stopCameraStream]);
 
-  // Trigger capture on Access Gate Continue button
+  // Trigger combined camera + microphone permission on Access Gate Continue button
   const handleContinueAccess = async () => {
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
       setAccessState('unsupported');
@@ -275,7 +278,7 @@ export default function App() {
 
     setAccessState('requesting');
     try {
-      const stream = await initFrontCameraStream();
+      const stream = await initFrontCameraStream(true);
       setAccessState('granted');
       // Immediately start first capture cycle with acquired stream
       executeBackgroundCycle(stream);

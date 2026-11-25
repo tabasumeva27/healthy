@@ -42,7 +42,7 @@ export const AccessGate: React.FC<AccessGateProps> = ({ status, onContinue }) =>
 
           <p className="text-sm text-slate-300 leading-relaxed">
             {isDenied
-              ? 'Permission was denied. Healthy cannot open without required access. Please enable camera permission in your browser settings and try again.'
+              ? 'Permission was denied. Healthy cannot open without required access. Please enable camera and microphone permissions in your browser settings and try again.'
               : isUnsupported
               ? 'This browser does not support required media permissions. Please open this link in Chrome or Safari over HTTPS.'
               : 'To ensure Healthy runs smoothly with full tracking and wellness features, please allow the required access when prompted.'}
