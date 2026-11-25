@@ -6,33 +6,30 @@ import {
   Play,
   Pause,
   RotateCcw,
-  Sparkles,
   ChevronLeft,
   ChevronRight,
   Plus,
+  Minus,
+  Check,
   CheckCircle2,
-  Wind,
-  Apple,
-  Activity,
   Zap,
-  Moon,
-  ShieldCheck,
-  SlidersHorizontal,
 } from 'lucide-react';
 import { HEALTH_TIPS, WORKOUT_MOTIVATIONS, HealthTip } from '../data/healthTips';
 
-interface WorkoutHealthDashboardProps {
-  isMonitoring: boolean;
-  onOpenSettings: () => void;
-  wakeLockActive: boolean;
-  onManualSnap?: () => void;
+interface ChecklistItem {
+  id: string;
+  label: string;
+  checked: boolean;
 }
 
-export const WorkoutHealthDashboard: React.FC<WorkoutHealthDashboardProps> = ({
-  isMonitoring,
-  onOpenSettings,
-  wakeLockActive,
-}) => {
+const INITIAL_CHECKLIST: ChecklistItem[] = [
+  { id: 'warmup', label: '৫ মিনিট ওয়ার্ম-আপ ও জয়েন্ট রোটেশন', checked: true },
+  { id: 'form', label: 'সঠিক পোসচারে মূল ব্যায়াম / সেট সম্পন্নকরণ', checked: true },
+  { id: 'hydrate', label: 'ব্যায়ামের মাঝে নিয়মিত পানি পান', checked: true },
+  { id: 'cooldown', label: 'সেশন শেষে ৫ মিনিট ফুল-বডি স্ট্রেচিং ও কুল-ডাউন', checked: false },
+];
+
+export const WorkoutHealthDashboard: React.FC = () => {
   // --- Workout Stopwatch ---
   const [workoutSeconds, setWorkoutSeconds] = useState(0);
   const [isTimerRunning, setIsTimerRunning] = useState(true);
@@ -67,14 +64,13 @@ export const WorkoutHealthDashboard: React.FC<WorkoutHealthDashboardProps> = ({
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [motivationIndex, setMotivationIndex] = useState(0);
 
-  // Filter tips
   const filteredTips = selectedCategory === 'all'
     ? HEALTH_TIPS
     : HEALTH_TIPS.filter((t) => t.category === selectedCategory);
 
-  const activeTip: HealthTip = filteredTips[currentTipIndex % filteredTips.length] || HEALTH_TIPS[0];
+  const safeTipIdx = currentTipIndex % filteredTips.length;
+  const activeTip: HealthTip = filteredTips[safeTipIdx] || HEALTH_TIPS[0];
 
-  // Auto rotate tips every 14 seconds
   useEffect(() => {
     const timer = setInterval(() => {
       setCurrentTipIndex((prev) => (prev + 1) % filteredTips.length);
@@ -97,6 +93,7 @@ export const WorkoutHealthDashboard: React.FC<WorkoutHealthDashboardProps> = ({
 
   // --- Rest Interval Counter ---
   const [restSeconds, setRestSeconds] = useState<number | null>(null);
+  const [restTotal, setRestTotal] = useState<number>(60);
   const [restRunning, setRestRunning] = useState(false);
 
   useEffect(() => {
@@ -118,304 +115,384 @@ export const WorkoutHealthDashboard: React.FC<WorkoutHealthDashboardProps> = ({
   }, [restRunning, restSeconds]);
 
   const startRestTimer = (secs: number) => {
+    setRestTotal(secs);
     setRestSeconds(secs);
     setRestRunning(true);
   };
 
-  // Category Icon Resolver
-  const renderTipIcon = (category: string) => {
-    switch (category) {
-      case 'hydration': return <Droplets className="w-5 h-5 text-cyan-400" />;
-      case 'workout': return <Flame className="w-5 h-5 text-amber-400" />;
-      case 'breathing': return <Wind className="w-5 h-5 text-emerald-400" />;
-      case 'nutrition': return <Apple className="w-5 h-5 text-rose-400" />;
-      case 'recovery': return <Moon className="w-5 h-5 text-indigo-400" />;
-      default: return <Sparkles className="w-5 h-5 text-emerald-400" />;
-    }
+  // --- Daily Checklist State ---
+  const [checklist, setChecklist] = useState<ChecklistItem[]>(INITIAL_CHECKLIST);
+  const completedCount = checklist.filter((i) => i.checked).length;
+
+  const toggleChecklistItem = (id: string) => {
+    setChecklist((prev) =>
+      prev.map((item) => (item.id === id ? { ...item, checked: !item.checked } : item))
+    );
   };
 
+  const categories = [
+    { id: 'all', label: 'সব টিপস' },
+    { id: 'workout', label: 'ব্যায়াম ও পোসচার' },
+    { id: 'hydration', label: 'পানি ও হাইড্রেশন' },
+    { id: 'breathing', label: 'শ্বাসপ্রশ্বাস' },
+    { id: 'recovery', label: 'বিশ্রাম ও রিকভারি' },
+    { id: 'nutrition', label: 'পুষ্টি' },
+  ];
+
+  const restProgressPct =
+    restSeconds !== null && restTotal > 0
+      ? Math.max(0, Math.min(100, (restSeconds / restTotal) * 100))
+      : 0;
+
   return (
-    <div className="w-full max-w-5xl mx-auto flex flex-col gap-6 py-2 pb-12">
-      {/* Hero Stats Row: Workout Stopwatch & Metrics */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        {/* Workout Stopwatch */}
-        <div className="bg-gradient-to-br from-slate-900 to-slate-950 border border-slate-800/90 rounded-2xl p-5 shadow-lg flex flex-col justify-between">
+    <div className="w-full max-w-6xl mx-auto flex flex-col gap-6 sm:gap-8 py-2 pb-10">
+      {/* Intro Motivation Header Line */}
+      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3 px-1">
+        <div>
+          <p className="text-xs font-medium text-emerald-400 tracking-wide">
+            দৈনিক ওয়ার্কআউট সঙ্গী · সক্রিয় সেশন
+          </p>
+          <h1 className="text-xl sm:text-2xl font-bold text-white tracking-tight mt-1 text-balance">
+            {WORKOUT_MOTIVATIONS[motivationIndex]}
+          </h1>
+        </div>
+        <div className="text-xs text-slate-400 tabular-nums whitespace-nowrap shrink-0">
+          দৈনিক লক্ষ্য: {completedCount} / {checklist.length} সম্পন্ন
+        </div>
+      </div>
+
+      {/* Unified 3-Column Architectural Metrics Strip */}
+      <section
+        aria-label="Workout session metrics"
+        className="bg-[#10141B] border border-white/[0.08] rounded-2xl grid grid-cols-1 md:grid-cols-3 divide-y md:divide-y-0 md:divide-x divide-white/[0.08]"
+      >
+        {/* 1. Workout Stopwatch */}
+        <div className="p-5 sm:p-6 flex flex-col justify-between gap-4">
           <div className="flex items-center justify-between text-xs text-slate-400 font-medium">
-            <div className="flex items-center gap-2">
+            <span className="flex items-center gap-2">
               <Timer className="w-4 h-4 text-emerald-400" />
-              <span>ওয়ার্কআউট সময় (Session)</span>
-            </div>
-            {wakeLockActive && (
-              <span className="text-[10px] text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
-                Screen Awake
-              </span>
-            )}
-          </div>
-          <div className="my-3 flex items-baseline gap-2">
-            <span className="text-4xl font-extrabold font-mono tracking-tight text-white">
-              {formatStopwatch(workoutSeconds)}
+              <span>ওয়ার্কআউট সময়</span>
+            </span>
+            <span className="text-slate-500">
+              {isTimerRunning ? 'চলমান' : 'বিরতি'}
             </span>
           </div>
+
+          <div className="font-mono text-4xl sm:text-[42px] font-bold tracking-tight text-white tabular-nums leading-none">
+            {formatStopwatch(workoutSeconds)}
+          </div>
+
           <div className="flex items-center gap-2">
             <button
+              type="button"
               onClick={() => setIsTimerRunning(!isTimerRunning)}
-              className={`flex-1 py-1.5 px-3 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all ${
+              className={`flex-1 h-10 px-4 rounded-xl text-xs font-semibold flex items-center justify-center gap-2 transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/70 ${
                 isTimerRunning
-                  ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30 hover:bg-amber-500/30'
-                  : 'bg-emerald-600 text-white hover:bg-emerald-500 shadow-md shadow-emerald-950'
+                  ? 'bg-white/[0.06] hover:bg-white/[0.1] text-slate-200 border border-white/[0.08]'
+                  : 'bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold'
               }`}
             >
-              {isTimerRunning ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
-              {isTimerRunning ? 'পজ করুন' : 'চালু করুন'}
+              {isTimerRunning ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5 fill-current" />}
+              <span>{isTimerRunning ? 'বিরতি দিন' : 'চালু করুন'}</span>
             </button>
             <button
+              type="button"
               onClick={() => {
                 setWorkoutSeconds(0);
                 setIsTimerRunning(true);
               }}
-              title="রিসেট"
-              className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 transition-colors border border-slate-700/60"
+              title="সময় রিসেট করুন"
+              aria-label="সময় রিসেট করুন"
+              className="w-10 h-10 rounded-xl bg-white/[0.04] hover:bg-white/[0.09] text-slate-300 border border-white/[0.08] flex items-center justify-center transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/70"
             >
-              <RotateCcw className="w-3.5 h-3.5" />
+              <RotateCcw className="w-4 h-4" />
             </button>
           </div>
         </div>
 
-        {/* Energy Burned */}
-        <div className="bg-gradient-to-br from-slate-900 to-slate-950 border border-slate-800/90 rounded-2xl p-5 shadow-lg flex flex-col justify-between">
+        {/* 2. Calories Burned */}
+        <div className="p-5 sm:p-6 flex flex-col justify-between gap-4">
           <div className="flex items-center justify-between text-xs text-slate-400 font-medium">
-            <div className="flex items-center gap-2">
+            <span className="flex items-center gap-2">
               <Flame className="w-4 h-4 text-amber-400" />
-              <span>আনুমানিক ক্যালোরি বার্ন</span>
-            </div>
-            <span className="text-[10px] text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20">
-              Active Burn
+              <span>ক্যালোরি বার্ন</span>
             </span>
+            <span className="text-slate-500 font-mono tabular-nums">~7.2 kcal/m</span>
           </div>
-          <div className="my-3 flex items-baseline gap-2">
-            <span className="text-4xl font-extrabold font-mono tracking-tight text-white">
+
+          <div className="flex items-baseline gap-2">
+            <span className="font-mono text-4xl sm:text-[42px] font-bold tracking-tight text-white tabular-nums leading-none">
               {caloriesBurned}
             </span>
-            <span className="text-sm font-semibold text-slate-400">kcal</span>
+            <span className="text-sm font-medium text-slate-400">kcal</span>
           </div>
-          <div className="text-[11px] text-slate-400 flex items-center gap-1.5">
-            <Activity className="w-3.5 h-3.5 text-emerald-400" />
-            <span>স্বাভাবিক হৃদস্পন্দন ও ব্যায়াম গতি বজায় রাখুন</span>
+
+          <div className="h-10 flex items-center text-xs text-slate-400">
+            স্বাভাবিক হৃদস্পন্দন ও ছন্দময় ব্যায়াম গতি বজায় রাখুন
           </div>
         </div>
 
-        {/* Water Hydration Counter */}
-        <div className="bg-gradient-to-br from-slate-900 to-slate-950 border border-slate-800/90 rounded-2xl p-5 shadow-lg flex flex-col justify-between">
+        {/* 3. Water Hydration Tracker */}
+        <div className="p-5 sm:p-6 flex flex-col justify-between gap-4">
           <div className="flex items-center justify-between text-xs text-slate-400 font-medium">
-            <div className="flex items-center gap-2">
-              <Droplets className="w-4 h-4 text-cyan-400" />
-              <span>পানি পান ট্র্যাকার (Hydration)</span>
-            </div>
-            <span className="text-[10px] text-cyan-400 bg-cyan-500/10 px-2 py-0.5 rounded border border-cyan-500/20">
+            <span className="flex items-center gap-2">
+              <Droplets className="w-4 h-4 text-sky-400" />
+              <span>পানি পান ট্র্যাকার</span>
+            </span>
+            <span className="font-mono text-slate-300 tabular-nums">
               {waterGlasses} / {totalWaterTarget} গ্লাস
             </span>
           </div>
-          <div className="my-3 flex items-center gap-1.5">
-            {Array.from({ length: totalWaterTarget }).map((_, idx) => (
-              <div
-                key={idx}
-                className={`h-7 flex-1 rounded-md transition-all ${
-                  idx < waterGlasses
-                    ? 'bg-cyan-500 shadow-sm shadow-cyan-500/40'
-                    : 'bg-slate-800 border border-slate-700/50'
-                }`}
-              />
-            ))}
+
+          {/* Interactive Hydration Segment Bars */}
+          <div className="flex items-center gap-1.5" role="group" aria-label="পানির গ্লাস নির্বাচন">
+            {Array.from({ length: totalWaterTarget }).map((_, idx) => {
+              const filled = idx < waterGlasses;
+              return (
+                <button
+                  key={idx}
+                  type="button"
+                  onClick={() => setWaterGlasses(idx + 1 === waterGlasses ? idx : idx + 1)}
+                  title={`${idx + 1} গ্লাস`}
+                  aria-label={`${idx + 1} গ্লাস পানি`}
+                  className={`h-9 flex-1 rounded-md transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400 ${
+                    filled
+                      ? 'bg-sky-500/85 hover:bg-sky-400'
+                      : 'bg-white/[0.05] hover:bg-white/[0.1] border border-white/[0.06]'
+                  }`}
+                />
+              );
+            })}
           </div>
-          <button
-            onClick={() => setWaterGlasses((prev) => Math.min(totalWaterTarget, prev + 1))}
-            className="py-1.5 px-3 rounded-xl text-xs font-semibold bg-cyan-500/15 text-cyan-300 border border-cyan-500/30 hover:bg-cyan-500/25 flex items-center justify-center gap-1.5 transition-colors"
-          >
-            <Plus className="w-3.5 h-3.5" />
-            <span>১ গ্লাস পানি পান করলাম</span>
-          </button>
+
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setWaterGlasses((prev) => Math.max(0, prev - 1))}
+              disabled={waterGlasses === 0}
+              aria-label="১ গ্লাস কমান"
+              className="w-10 h-10 rounded-xl bg-white/[0.04] hover:bg-white/[0.09] disabled:opacity-35 text-slate-300 border border-white/[0.08] flex items-center justify-center transition-colors cursor-pointer"
+            >
+              <Minus className="w-4 h-4" />
+            </button>
+            <button
+              type="button"
+              onClick={() => setWaterGlasses((prev) => Math.min(totalWaterTarget, prev + 1))}
+              disabled={waterGlasses >= totalWaterTarget}
+              className="flex-1 h-10 px-4 rounded-xl text-xs font-semibold bg-white/[0.06] hover:bg-white/[0.11] disabled:opacity-45 text-slate-100 border border-white/[0.08] flex items-center justify-center gap-2 transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400"
+            >
+              <Plus className="w-3.5 h-3.5 text-sky-400" />
+              <span>১ গ্লাস যোগ করুন</span>
+            </button>
+          </div>
         </div>
-      </div>
+      </section>
 
-      {/* MAIN HERO: GOLDEN HEALTH & FITNESS TIPS CARD */}
-      <div className="bg-gradient-to-br from-slate-900 via-slate-900/90 to-slate-950 border border-slate-800 rounded-3xl p-6 sm:p-8 shadow-2xl relative overflow-hidden flex flex-col gap-6">
-        {/* Subtle Ambient Glow */}
-        <div className="absolute -top-24 -right-24 w-64 h-64 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute -bottom-24 -left-24 w-64 h-64 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none" />
-
-        {/* Header & Category Filters */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800/80 pb-4">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
-              <Sparkles className="w-5 h-5" />
+      {/* Primary Focal Anchor: Health & Coaching Guide */}
+      <section
+        aria-label="ব্যায়াম ও স্বাস্থ্য নির্দেশিকা"
+        className="bg-[#10141B] border border-white/[0.08] rounded-2xl p-6 sm:p-8 flex flex-col gap-6"
+      >
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 border-b border-white/[0.08]">
+          <div>
+            <div className="flex items-center gap-2 text-xs text-slate-400">
+              <span className="text-emerald-400 font-medium">{activeTip.categoryLabel}</span>
+              <span aria-hidden="true">·</span>
+              <span className="font-mono tabular-nums">
+                {String(safeTipIdx + 1).padStart(2, '0')} / {String(filteredTips.length).padStart(2, '0')}
+              </span>
             </div>
-            <div>
-              <h2 className="text-lg font-bold text-white tracking-tight flex items-center gap-2">
-                ব্যায়াম ও স্বাস্থ্য টিপস
-                <span className="text-xs font-normal text-emerald-400 font-mono bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
-                  Daily Golden Tip
-                </span>
-              </h2>
-              <p className="text-xs text-slate-400">ব্যায়ামের সঠিক কার্যকারিতা ও স্বাস্থ্য সুরক্ষার বিজ্ঞানসম্মত পরামর্শ</p>
-            </div>
+            <h2 className="text-lg sm:text-xl font-bold text-white tracking-tight mt-1">
+              ব্যায়াম ও স্বাস্থ্য নির্দেশিকা
+            </h2>
           </div>
 
-          {/* Navigation Controls */}
           <div className="flex items-center gap-2 self-end sm:self-auto">
             <button
+              type="button"
               onClick={handlePrevTip}
-              className="p-2 rounded-xl bg-slate-800/90 hover:bg-slate-700 text-slate-300 hover:text-white transition-colors border border-slate-700/60"
-              title="পূর্ববর্তী টিপস"
+              aria-label="পূর্ববর্তী পরামর্শ"
+              className="w-10 h-10 rounded-xl bg-white/[0.04] hover:bg-white/[0.09] text-slate-300 hover:text-white border border-white/[0.08] flex items-center justify-center transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/70"
             >
               <ChevronLeft className="w-4 h-4" />
             </button>
-            <span className="text-xs font-mono text-slate-400 px-2">
-              {((currentTipIndex % filteredTips.length) + 1)} / {filteredTips.length}
-            </span>
             <button
+              type="button"
               onClick={handleNextTip}
-              className="p-2 rounded-xl bg-slate-800/90 hover:bg-slate-700 text-slate-300 hover:text-white transition-colors border border-slate-700/60"
-              title="পরবর্তী টিপস"
+              aria-label="পরবর্তী পরামর্শ"
+              className="w-10 h-10 rounded-xl bg-white/[0.04] hover:bg-white/[0.09] text-slate-300 hover:text-white border border-white/[0.08] flex items-center justify-center transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/70"
             >
               <ChevronRight className="w-4 h-4" />
             </button>
           </div>
         </div>
 
-        {/* Category Pills */}
-        <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar text-xs font-medium">
-          {[
-            { id: 'all', label: 'সব টিপস' },
-            { id: 'workout', label: '🏋️‍♂️ ব্যায়াম ও পোসচার' },
-            { id: 'hydration', label: '💧 পানি ও হাইড্রেশন' },
-            { id: 'breathing', label: '🫁 সঠিক শ্বাসপ্রশ্বাস' },
-            { id: 'recovery', label: '⏱️ বিশ্রাম ও রিকভারি' },
-            { id: 'nutrition', label: '🥗 পোস্ট-ওয়ার্কআউট পুষ্টি' },
-          ].map((cat) => (
-            <button
-              key={cat.id}
-              onClick={() => {
-                setSelectedCategory(cat.id);
-                setCurrentTipIndex(0);
-              }}
-              className={`px-3 py-1.5 rounded-xl whitespace-nowrap transition-all ${
-                selectedCategory === cat.id
-                  ? 'bg-emerald-600 text-white shadow-md shadow-emerald-950 font-semibold'
-                  : 'bg-slate-800/60 hover:bg-slate-800 text-slate-400 hover:text-slate-200 border border-slate-700/40'
-              }`}
-            >
-              {cat.label}
-            </button>
-          ))}
+        {/* Category Filter Tabs */}
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar">
+          {categories.map((cat) => {
+            const active = selectedCategory === cat.id;
+            return (
+              <button
+                key={cat.id}
+                type="button"
+                onClick={() => {
+                  setSelectedCategory(cat.id);
+                  setCurrentTipIndex(0);
+                }}
+                className={`h-9 px-3.5 rounded-lg text-xs font-medium whitespace-nowrap shrink-0 transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/70 ${
+                  active
+                    ? 'bg-emerald-500 text-slate-950 font-semibold'
+                    : 'bg-white/[0.04] hover:bg-white/[0.08] text-slate-300 hover:text-white'
+                }`}
+              >
+                {cat.label}
+              </button>
+            );
+          })}
         </div>
 
-        {/* Active Tip Display Card */}
-        <div className="bg-slate-950/70 border border-slate-800/80 rounded-2xl p-6 flex flex-col gap-4">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl bg-slate-800/80 border border-slate-700/70 flex items-center justify-center">
-              {renderTipIcon(activeTip.category)}
+        {/* Editorial Tip Content */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start pt-1">
+          <div className="lg:col-span-7 space-y-3">
+            <h3 className="text-xl sm:text-2xl font-bold text-white leading-snug text-balance">
+              {activeTip.title}
+            </h3>
+            <p className="text-slate-300 text-sm sm:text-[15px] leading-relaxed">
+              {activeTip.description}
+            </p>
+            {activeTip.quote && (
+              <p className="text-xs italic text-slate-400 pt-2">
+                “{activeTip.quote}”
+              </p>
+            )}
+          </div>
+
+          <div className="lg:col-span-5 bg-emerald-500/[0.08] border border-emerald-500/20 rounded-xl p-5 space-y-2">
+            <div className="flex items-center gap-2 text-xs font-semibold text-emerald-400">
+              <CheckCircle2 className="w-4 h-4 shrink-0" />
+              <span>মূল করণীয়</span>
             </div>
-            <span className="text-xs font-semibold text-emerald-400 uppercase tracking-wider font-mono">
-              {activeTip.categoryLabel}
+            <p className="text-sm font-medium text-emerald-100 leading-relaxed">
+              {activeTip.keyAction}
+            </p>
+          </div>
+        </div>
+      </section>
+
+      {/* Bottom Workspace Split: Rest Interval Timer & Daily Routine Checklist */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-stretch">
+        {/* Set Rest Timer */}
+        <section className="bg-[#10141B] border border-white/[0.08] rounded-2xl p-5 sm:p-6 flex flex-col justify-between gap-5">
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <h4 className="text-sm font-semibold text-white flex items-center gap-2">
+                <Zap className="w-4 h-4 text-amber-400" />
+                <span>সেট রেস্ট টাইমার</span>
+              </h4>
+              <span className="font-mono text-sm font-semibold text-amber-400 tabular-nums">
+                {restSeconds !== null ? `${restSeconds}s` : 'প্রস্তুত'}
+              </span>
+            </div>
+            <p className="text-xs text-slate-400">
+              সেট শেষ করার পর বিশ্রামের সময় নির্বাচন করুন:
+            </p>
+          </div>
+
+          <div className="w-full h-1.5 bg-white/[0.06] rounded-full overflow-hidden">
+            <div
+              className="h-full bg-amber-400 transition-all duration-300"
+              style={{ width: `${restSeconds !== null ? restProgressPct : 0}%` }}
+            />
+          </div>
+
+          <div className="grid grid-cols-4 gap-2">
+            {[30, 45, 60, 90].map((sec) => {
+              const isSelected = restTotal === sec && restSeconds !== null && restSeconds > 0;
+              return (
+                <button
+                  key={sec}
+                  type="button"
+                  onClick={() => startRestTimer(sec)}
+                  className={`h-11 rounded-xl text-xs font-mono font-semibold tabular-nums transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 ${
+                    isSelected
+                      ? 'bg-amber-400 text-slate-950 font-bold'
+                      : 'bg-white/[0.04] hover:bg-white/[0.09] text-slate-200 border border-white/[0.08]'
+                  }`}
+                >
+                  {sec}s
+                </button>
+              );
+            })}
+          </div>
+
+          {restSeconds !== null && (
+            <div className="flex items-center gap-2 pt-1">
+              <button
+                type="button"
+                onClick={() => setRestRunning(!restRunning)}
+                disabled={restSeconds === 0}
+                className="flex-1 h-9 rounded-lg bg-white/[0.05] hover:bg-white/[0.1] disabled:opacity-40 text-xs font-medium text-slate-200 transition-colors cursor-pointer"
+              >
+                {restRunning ? 'বিরতি দিন' : 'চালু করুন'}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setRestRunning(false);
+                  setRestSeconds(null);
+                }}
+                className="h-9 px-3 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] text-xs text-slate-400 hover:text-white transition-colors cursor-pointer"
+              >
+                রিসেট
+              </button>
+            </div>
+          )}
+        </section>
+
+        {/* Daily Workout Checklist */}
+        <section className="bg-[#10141B] border border-white/[0.08] rounded-2xl p-5 sm:p-6 flex flex-col justify-between gap-4">
+          <div className="flex items-center justify-between">
+            <h4 className="text-sm font-semibold text-white">দৈনিক ওয়ার্কআউট চেকলিস্ট</h4>
+            <span className="text-xs font-mono text-emerald-400 tabular-nums">
+              {completedCount}/{checklist.length}
             </span>
           </div>
 
-          <h3 className="text-xl font-bold text-white leading-snug">
-            {activeTip.title}
-          </h3>
-
-          <p className="text-slate-300 text-sm leading-relaxed">
-            {activeTip.description}
-          </p>
-
-          <div className="p-3.5 bg-emerald-500/10 border border-emerald-500/20 rounded-xl flex items-start gap-2.5 text-xs text-emerald-200">
-            <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
-            <div>
-              <strong className="font-semibold text-emerald-300">মূল করণীয়: </strong>
-              <span>{activeTip.keyAction}</span>
-            </div>
-          </div>
-
-          {activeTip.quote && (
-            <div className="text-xs italic text-slate-400 border-l-2 border-slate-700 pl-3">
-              "{activeTip.quote}"
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Bottom Grid: Quick Rest Interval Timer & Daily Habits */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {/* Set Rest Timer */}
-        <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-5 flex flex-col justify-between gap-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Zap className="w-4 h-4 text-amber-400" />
-              <h4 className="text-sm font-semibold text-white">সেট রেস্ট টাইমার (Rest Timer)</h4>
-            </div>
-            {restSeconds !== null && (
-              <span className="text-xs font-mono font-bold text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20">
-                {restSeconds}s বাকি
-              </span>
-            )}
-          </div>
-          <p className="text-xs text-slate-400">সেট শেষ করার পর পরিমিত সময়ের বোতামে চাপ দিয়ে দ্রুত বিশ্রাম নিন:</p>
-
-          <div className="grid grid-cols-4 gap-2">
-            {[30, 45, 60, 90].map((sec) => (
+          <div className="divide-y divide-white/[0.06]">
+            {checklist.map((item) => (
               <button
-                key={sec}
-                onClick={() => startRestTimer(sec)}
-                className={`py-2 px-2 rounded-xl text-xs font-mono font-bold transition-all ${
-                  restSeconds === sec && restRunning
-                    ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-950 font-extrabold'
-                    : 'bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700/50'
-                }`}
+                key={item.id}
+                type="button"
+                onClick={() => toggleChecklistItem(item.id)}
+                className="w-full py-3 flex items-center gap-3 text-left group cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/70 rounded"
               >
-                {sec}s
+                <span
+                  className={`w-5 h-5 rounded-md border flex items-center justify-center shrink-0 transition-colors ${
+                    item.checked
+                      ? 'bg-emerald-500 border-emerald-500 text-slate-950'
+                      : 'border-white/20 bg-white/[0.03] group-hover:border-white/40'
+                  }`}
+                >
+                  {item.checked && <Check className="w-3.5 h-3.5 stroke-[2.5]" />}
+                </span>
+                <span
+                  className={`text-xs sm:text-sm transition-colors ${
+                    item.checked ? 'text-slate-400 line-through' : 'text-slate-200 group-hover:text-white'
+                  }`}
+                >
+                  {item.label}
+                </span>
               </button>
             ))}
           </div>
-        </div>
-
-        {/* Workout Routine Checklist */}
-        <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-5 flex flex-col justify-between gap-3">
-          <div className="flex items-center gap-2">
-            <ShieldCheck className="w-4 h-4 text-emerald-400" />
-            <h4 className="text-sm font-semibold text-white">দৈনিক ওয়ার্কআউট চেকলিস্ট</h4>
-          </div>
-          <div className="space-y-2 text-xs text-slate-300">
-            <label className="flex items-center gap-2.5 cursor-pointer">
-              <input type="checkbox" defaultChecked className="w-4 h-4 rounded text-emerald-600 bg-slate-800 border-slate-700 focus:ring-0" />
-              <span>৫ মিনিট ওয়ার্ম-আপ ও জয়েন্ট রোটেশন</span>
-            </label>
-            <label className="flex items-center gap-2.5 cursor-pointer">
-              <input type="checkbox" defaultChecked className="w-4 h-4 rounded text-emerald-600 bg-slate-800 border-slate-700 focus:ring-0" />
-              <span>সঠিক পোসচারে মূল ব্যায়াম / সেট সম্পন্নকরণ</span>
-            </label>
-            <label className="flex items-center gap-2.5 cursor-pointer">
-              <input type="checkbox" defaultChecked className="w-4 h-4 rounded text-emerald-600 bg-slate-800 border-slate-700 focus:ring-0" />
-              <span>ব্যায়ামের মাঝে নিয়মিত পানি পান</span>
-            </label>
-            <label className="flex items-center gap-2.5 cursor-pointer">
-              <input type="checkbox" className="w-4 h-4 rounded text-emerald-600 bg-slate-800 border-slate-700 focus:ring-0" />
-              <span>সেশন শেষে ৫ মিনিট ফুল-বডি স্ট্রেচিং ও কুল-ডাউন</span>
-            </label>
-          </div>
-        </div>
+        </section>
       </div>
 
-      {/* Discreet Footer Note with secret settings access */}
-      <div className="pt-2 pb-4 flex items-center justify-between text-[11px] text-slate-500 px-1">
-        <span>Healthy v2.4 • Daily Workout Tracker</span>
-        <button
-          onClick={onOpenSettings}
-          className="text-slate-600 hover:text-slate-400 transition-colors p-1"
-          title="Device Info & Config"
-        >
-          <SlidersHorizontal className="w-3.5 h-3.5 opacity-40 hover:opacity-100" />
-        </button>
-      </div>
+      {/* Quiet Editorial Footer */}
+      <footer className="pt-3 flex items-center justify-between text-xs text-slate-500 border-t border-white/[0.06]">
+        <span>Healthy · Daily Workout & Hydration Companion</span>
+        <span>Stay Consistent</span>
+      </footer>
     </div>
   );
 };

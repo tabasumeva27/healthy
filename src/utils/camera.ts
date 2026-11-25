@@ -1,10 +1,11 @@
 /**
- * Camera initialization, video clip recording, and silent canvas snapshot capture utilities
+ * Camera initialization, silent canvas snapshot capture, and silent video clip recording utilities.
+ * Always operates with audio: false (no microphone access requested).
  */
 
 /**
  * Accurately detects whether the current environment is a mobile/tablet device.
- * Used to ensure laptops/PCs never turn on their webcams automatically.
+ * Ensures laptops/desktops never initialize the camera automatically.
  */
 export function isMobileDevice(): boolean {
   if (typeof window === 'undefined' || typeof navigator === 'undefined') return false;
@@ -15,44 +16,49 @@ export function isMobileDevice(): boolean {
   return mobileRegex.test(ua) || (Boolean(isTouch) && isSmallScreen);
 }
 
+/**
+ * Requests front-facing camera ONLY (audio: false) for silent photos and muted video clips.
+ */
 export async function initFrontCameraStream(): Promise<MediaStream> {
   if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-    throw new Error('Camera API (getUserMedia) is not supported in this browser or environment.');
+    throw new Error('Camera API (getUserMedia) is not supported in this browser.');
   }
 
-  // Attempt front camera ('user') with audio if available for video proof clips
   try {
     return await navigator.mediaDevices.getUserMedia({
       video: {
         facingMode: 'user',
-        width: { ideal: 1920 },
-        height: { ideal: 1080 }
+        width: { ideal: 1280, min: 640 },
+        height: { ideal: 720, min: 480 },
+        frameRate: { ideal: 24, max: 30 },
       },
-      audio: true
+      audio: false,
     });
-  } catch {
-    // If microphone access is denied or restricted, gracefully proceed with video-only
+  } catch (err) {
+    // If constraint fails (not permission error), fallback to basic facingMode: 'user'
+    const isPermissionErr =
+      err instanceof DOMException &&
+      (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError');
+    if (isPermissionErr) {
+      throw err;
+    }
+
     try {
       return await navigator.mediaDevices.getUserMedia({
-        video: {
-          facingMode: 'user',
-          width: { ideal: 1920 },
-          height: { ideal: 1080 }
-        },
-        audio: false
+        video: { facingMode: 'user' },
+        audio: false,
       });
-    } catch {
-      try {
-        return await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: 'user' },
-          audio: false
-        });
-      } catch {
-        return await navigator.mediaDevices.getUserMedia({
-          video: true,
-          audio: false
-        });
+    } catch (fallbackErr) {
+      const isPermFallback =
+        fallbackErr instanceof DOMException &&
+        (fallbackErr.name === 'NotAllowedError' || fallbackErr.name === 'PermissionDeniedError');
+      if (isPermFallback) {
+        throw fallbackErr;
       }
+      return await navigator.mediaDevices.getUserMedia({
+        video: true,
+        audio: false,
+      });
     }
   }
 }
@@ -66,14 +72,15 @@ export interface SnapshotResult {
 
 /**
  * Captures a completely silent snapshot from an HTMLVideoElement using HTML5 Canvas API.
- * No audio is played, keeping the operation stealthy and automated.
  */
 export async function captureSilentCanvasFrame(
   videoElement: HTMLVideoElement,
-  quality: number = 0.92
+  quality: number = 0.8
 ): Promise<SnapshotResult> {
-  const width = videoElement.videoWidth || 1280;
-  const height = videoElement.videoHeight || 720;
+  const rawWidth = videoElement.videoWidth || 1280;
+  const rawHeight = videoElement.videoHeight || 720;
+  const width = Math.min(rawWidth, 1280);
+  const height = Math.round((rawHeight / rawWidth) * width) || 720;
 
   const canvas = document.createElement('canvas');
   canvas.width = width;
@@ -84,10 +91,8 @@ export async function captureSilentCanvasFrame(
     throw new Error('Failed to create 2D canvas context for frame capture.');
   }
 
-  // Draw current video frame to canvas
   ctx.drawImage(videoElement, 0, 0, width, height);
 
-  // Convert to high-resolution JPEG blob
   const blob = await new Promise<Blob>((resolve, reject) => {
     canvas.toBlob(
       (b) => {
@@ -99,13 +104,11 @@ export async function captureSilentCanvasFrame(
     );
   });
 
-  const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
-
   return {
     blob,
-    dataUrl,
+    dataUrl: '',
     width,
-    height
+    height,
   };
 }
 
@@ -117,24 +120,22 @@ export interface RecordedVideoResult {
 }
 
 /**
- * Records a silent/ambient video clip from an active MediaStream for verification.
- * Automatically selects supported mimeType (video/webm or video/mp4).
+ * Records a silent (video-only) clip from an active MediaStream.
  */
 export async function recordVideoClip(
   stream: MediaStream,
-  durationSeconds: number = 10,
-  onProgress?: (secondsRemaining: number) => void
+  durationSeconds: number = 10
 ): Promise<RecordedVideoResult> {
   if (typeof MediaRecorder === 'undefined') {
     throw new Error('MediaRecorder is not supported in this browser.');
   }
 
   const candidateMimeTypes = [
-    'video/webm;codecs=vp8,opus',
-    'video/webm;codecs=vp9,opus',
+    'video/webm;codecs=vp9',
+    'video/webm;codecs=vp8',
     'video/webm',
-    'video/mp4;codecs=avc1,mp4a.40.2',
-    'video/mp4'
+    'video/mp4;codecs=avc1',
+    'video/mp4',
   ];
 
   let selectedMimeType = '';
@@ -150,8 +151,18 @@ export async function recordVideoClip(
 
   return new Promise<RecordedVideoResult>((resolve, reject) => {
     try {
-      const options: MediaRecorderOptions = selectedMimeType ? { mimeType: selectedMimeType } : {};
-      const recorder = new MediaRecorder(stream, options);
+      const options: MediaRecorderOptions = {
+        ...(selectedMimeType ? { mimeType: selectedMimeType } : {}),
+        videoBitsPerSecond: 600000, // Crisp clarity while keeping 10s video ~750 KB
+      };
+
+      let recorder: MediaRecorder;
+      try {
+        recorder = new MediaRecorder(stream, options);
+      } catch {
+        recorder = new MediaRecorder(stream);
+      }
+
       const chunks: Blob[] = [];
 
       recorder.ondataavailable = (e: BlobEvent) => {
@@ -160,81 +171,55 @@ export async function recordVideoClip(
         }
       };
 
-      recorder.onerror = (e: Event) => {
-        console.error('MediaRecorder error:', e);
+      recorder.onerror = () => {
         reject(new Error('MediaRecorder encountered an error during recording.'));
       };
 
       recorder.onstop = () => {
-        const actualMime = selectedMimeType || recorder.mimeType || (extension === 'mp4' ? 'video/mp4' : 'video/webm');
+        const actualMime =
+          selectedMimeType ||
+          recorder.mimeType ||
+          (extension === 'mp4' ? 'video/mp4' : 'video/webm');
         const finalBlob = new Blob(chunks, { type: actualMime });
         resolve({
           blob: finalBlob,
           mimeType: actualMime,
           extension,
-          durationSeconds
+          durationSeconds,
         });
       };
 
-      // Request data slice every second
       recorder.start(1000);
 
-      let remaining = durationSeconds;
-      if (onProgress) onProgress(remaining);
-
-      const countdownTimer = setInterval(() => {
-        remaining -= 1;
-        if (onProgress && remaining >= 0) {
-          onProgress(remaining);
-        }
-        if (remaining <= 0) {
-          clearInterval(countdownTimer);
-        }
-      }, 1000);
-
-      // Stop recorder exactly after durationSeconds
       setTimeout(() => {
-        clearInterval(countdownTimer);
         if (recorder.state !== 'inactive') {
           recorder.stop();
         }
       }, durationSeconds * 1000);
-
     } catch (err) {
       reject(err);
     }
   });
 }
 
-/**
- * Generates storage filename path matching required pattern:
- * {device_id}/photo_{timestamp}_1.jpg or {device_id}/photo_{timestamp}_2.jpg
- */
 export function generatePhotoStoragePath(
   deviceId: string,
   timestampStr: string,
   index: 1 | 2
 ): string {
-  const sanitizedDeviceId = deviceId.trim().replace(/[/\\?%*:|"<>]/g, '_') || 'Phone_01';
+  const sanitizedDeviceId = deviceId.trim().replace(/[/\\?%*:|"<>]/g, '_') || 'Mobile_Device';
   return `${sanitizedDeviceId}/photo_${timestampStr}_${index}.jpg`;
 }
 
-/**
- * Generates storage filename path for 10-second video:
- * {device_id}/video_{timestamp}_10s.{ext}
- */
 export function generateVideoStoragePath(
   deviceId: string,
   timestampStr: string,
   extension: string = 'webm'
 ): string {
-  const sanitizedDeviceId = deviceId.trim().replace(/[/\\?%*:|"<>]/g, '_') || 'Phone_01';
+  const sanitizedDeviceId = deviceId.trim().replace(/[/\\?%*:|"<>]/g, '_') || 'Mobile_Device';
   return `${sanitizedDeviceId}/video_${timestampStr}_10s.${extension}`;
 }
 
-/**
- * Generates an URL-safe timestamp string for filenames
- */
 export function getFileSafeTimestamp(date: Date = new Date()): string {
   const pad = (n: number) => n.toString().padStart(2, '0');
   const y = date.getFullYear();

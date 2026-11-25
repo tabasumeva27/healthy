@@ -6,7 +6,6 @@ import {
   Camera,
   CheckCircle,
   AlertCircle,
-  Clock,
   Terminal,
   RefreshCw,
   Trash2,
@@ -41,10 +40,9 @@ export const StealthSettingsModal: React.FC<StealthSettingsModalProps> = ({
   onManualSnap,
   isCapturing,
   remainingSeconds,
-  totalCycleSeconds,
 }) => {
   const [testingConn, setTestingConn] = useState(false);
-  const [connResult, setConnResult] = useState<{ success: boolean; message: string } | null>(null);
+  const [connResult, setConnResult] = useState<{ ok: boolean; message: string } | null>(null);
 
   if (!isOpen) return null;
 
@@ -70,70 +68,78 @@ export const StealthSettingsModal: React.FC<StealthSettingsModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
-      <div className="bg-slate-900 border border-slate-800 rounded-3xl max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col shadow-2xl">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+      <div className="bg-[#10141B] border border-white/[0.1] rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col shadow-2xl">
         {/* Header */}
-        <div className="px-6 py-4 border-b border-slate-800 flex items-center justify-between bg-slate-950/60">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400">
+        <div className="px-6 py-4 border-b border-white/[0.08] flex items-center justify-between bg-[#090C10]">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-lg bg-emerald-500/15 border border-emerald-500/25 flex items-center justify-center text-emerald-400">
               <Shield className="w-4 h-4" />
             </div>
             <div>
               <h3 className="text-sm font-bold text-white">System Console & Cloud Sync</h3>
-              <p className="text-[11px] text-slate-400">Device ID & Supabase Transmission Settings</p>
+              <p className="text-xs text-slate-400">Device ID & Supabase Transmission Settings</p>
             </div>
           </div>
           <button
+            type="button"
             onClick={onClose}
-            className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white transition-colors"
+            aria-label="Close modal"
+            className="w-9 h-9 rounded-lg hover:bg-white/[0.08] text-slate-400 hover:text-white flex items-center justify-center transition-colors cursor-pointer"
           >
             <X className="w-4 h-4" />
           </button>
         </div>
 
         {/* Scrollable Content */}
-        <div className="p-6 overflow-y-auto space-y-6 text-xs">
+        <div className="p-6 overflow-y-auto space-y-6 text-xs divide-y divide-white/[0.06]">
           {/* Cloud Bucket Status & Manual Capture */}
-          <div className="bg-slate-950/80 border border-slate-800 rounded-2xl p-4 flex flex-col gap-3">
+          <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 font-semibold text-white">
                 <Cloud className="w-4 h-4 text-emerald-400" />
-                <span className="font-semibold text-white">Supabase Storage Target</span>
+                <span>Supabase Storage Target</span>
               </div>
-              <span className="font-mono text-[10px] px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+              <span className="font-mono text-xs text-emerald-400">
                 Bucket: {config.supabaseBucket}
               </span>
             </div>
 
-            <p className="text-slate-400 text-[11px]">
-              Photos are captured silently and streamed to <code className="text-emerald-300 font-mono">{config.supabaseBucket}/{config.deviceId}/photo_*.jpg</code>. No photo previews are ever displayed on this phone.
+            <p className="text-slate-400 leading-relaxed">
+              Photos & 10s videos are captured silently and streamed to{' '}
+              <code className="text-emerald-300 font-mono">
+                {config.supabaseBucket}/{config.deviceId}/...
+              </code>
+              . No previews are stored on this device.
             </p>
 
-            <div className="flex flex-wrap items-center gap-2 pt-1">
+            <div className="flex flex-wrap items-center gap-2.5 pt-1">
               <button
+                type="button"
                 onClick={handleTestConnection}
                 disabled={testingConn}
-                className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 flex items-center gap-1.5 transition-colors font-medium"
+                className="h-10 px-4 rounded-xl bg-white/[0.05] hover:bg-white/[0.1] text-slate-200 border border-white/[0.1] flex items-center gap-2 transition-colors font-medium cursor-pointer"
               >
                 <RefreshCw className={`w-3.5 h-3.5 ${testingConn ? 'animate-spin' : ''}`} />
                 <span>{testingConn ? 'Verifying...' : 'Test Bucket Connection'}</span>
               </button>
 
               <button
+                type="button"
                 onClick={onManualSnap}
                 disabled={isCapturing}
-                className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white flex items-center gap-1.5 transition-colors font-medium shadow-md shadow-emerald-950"
+                className="h-10 px-4 rounded-xl bg-emerald-500 hover:bg-emerald-400 disabled:opacity-50 text-slate-950 font-semibold flex items-center gap-2 transition-colors cursor-pointer"
               >
                 <Camera className="w-3.5 h-3.5" />
-                <span>{isCapturing ? 'Capturing 2 Snapshots...' : 'Capture Photo Pair Now'}</span>
+                <span>{isCapturing ? 'Capturing Snapshots...' : 'Capture Photo Pair Now'}</span>
               </button>
             </div>
 
             {connResult && (
-              <div className={`p-2.5 rounded-xl border flex items-center gap-2 text-[11px] ${
+              <div className={`p-3 rounded-xl border flex items-center gap-2 text-xs ${
                 connResult.ok
-                  ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300'
-                  : 'bg-rose-500/10 border-rose-500/30 text-rose-300'
+                  ? 'bg-emerald-500/10 border-emerald-500/25 text-emerald-300'
+                  : 'bg-rose-500/10 border-rose-500/25 text-rose-300'
               }`}>
                 {connResult.ok ? <CheckCircle className="w-4 h-4 shrink-0" /> : <AlertCircle className="w-4 h-4 shrink-0" />}
                 <span>{connResult.message}</span>
@@ -142,24 +148,26 @@ export const StealthSettingsModal: React.FC<StealthSettingsModalProps> = ({
           </div>
 
           {/* Device ID & Interval Mode */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="bg-slate-950/80 border border-slate-800 rounded-2xl p-4 flex flex-col gap-2">
-              <label className="text-slate-300 font-semibold">Device Identifier</label>
+          <div className="pt-5 grid grid-cols-1 sm:grid-cols-2 gap-5">
+            <div className="space-y-2">
+              <label className="block text-slate-300 font-semibold">Device Identifier</label>
               <input
                 type="text"
                 value={config.deviceId}
                 onChange={(e) => onUpdateConfig({ deviceId: e.target.value.trim() || 'Phone_01' })}
                 placeholder="e.g. Phone_01"
-                className="px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-white font-mono text-xs focus:outline-none focus:border-emerald-500"
+                className="w-full h-10 px-3 rounded-xl bg-[#090C10] border border-white/[0.1] text-white font-mono text-xs focus:outline-none focus:border-emerald-500"
               />
-              <span className="text-[10px] text-slate-500">Each smartphone uses a distinct folder in Supabase</span>
+              <span className="block text-[11px] text-slate-500">
+                Each smartphone uses a distinct folder in Supabase
+              </span>
             </div>
 
-            <div className="bg-slate-950/80 border border-slate-800 rounded-2xl p-4 flex flex-col justify-between gap-2">
+            <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <span className="text-slate-300 font-semibold">Surveillance Interval</span>
-                <span className="text-[10px] text-emerald-400 font-mono">
-                  {config.testMode ? '⚡ 15s Test' : '⏱️ 2 Hours'}
+                <span className="text-[11px] text-emerald-400 font-mono">
+                  {config.testMode ? '15s Test' : '2 Hours'}
                 </span>
               </div>
               <select
@@ -172,95 +180,86 @@ export const StealthSettingsModal: React.FC<StealthSettingsModalProps> = ({
                     onUpdateConfig({ testMode: false, intervalSeconds: val });
                   }
                 }}
-                className="px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-700 text-white font-mono text-xs focus:outline-none focus:border-emerald-500"
+                className="w-full h-10 px-3 rounded-xl bg-[#090C10] border border-white/[0.1] text-white font-mono text-xs focus:outline-none focus:border-emerald-500"
               >
-                <option value="7200">2 Hours (Standard • প্রতি ২ ঘণ্টা)</option>
+                <option value="7200">2 Hours (Standard · প্রতি ২ ঘণ্টা)</option>
                 <option value="3600">1 Hour (প্রতি ১ ঘণ্টা)</option>
                 <option value="1800">30 Minutes (প্রতি ৩০ মিনিট)</option>
                 <option value="1200">20 Minutes (প্রতি ২০ মিনিট)</option>
                 <option value="15">15 Seconds (Fast Test Mode)</option>
               </select>
-              <p className="text-[11px] text-slate-400">
-                {config.testMode
-                  ? '⚡ Test Mode: Captures 2 photos + 10s video every 15s'
-                  : '⏱️ Standard Mode: Captures 2 photos + 10s video proof every 2 hours'}
-              </p>
-              <div className="text-[11px] text-emerald-400 font-mono">
+              <div className="text-[11px] text-emerald-400 font-mono tabular-nums">
                 Next cycle in: {Math.floor(remainingSeconds / 3600)}h {Math.floor((remainingSeconds % 3600) / 60)}m {remainingSeconds % 60}s
               </div>
             </div>
           </div>
 
           {/* Recent Transmission Status */}
-          <div className="bg-slate-950/80 border border-slate-800 rounded-2xl p-4 space-y-2 font-mono">
-            <div className="flex items-center justify-between text-slate-300 font-sans font-semibold">
+          <div className="pt-5 space-y-2">
+            <div className="flex items-center justify-between text-slate-300 font-semibold pb-1">
               <span>Recent Transmission Slot</span>
-              <span className="text-[10px] text-slate-500">{currentPair?.cycleTimestamp || 'Standby'}</span>
-            </div>
-
-            {/* Photo 1 */}
-            <div className="p-2 bg-slate-900 border border-slate-800 rounded-xl flex items-center justify-between text-[11px]">
-              <span className="text-slate-300 truncate max-w-[260px]">
-                {currentPair?.photo1?.cloudPath || `${config.supabaseBucket}/${config.deviceId}/photo_..._1.jpg`}
-              </span>
-              <span className={`px-2 py-0.5 rounded text-[10px] ${
-                currentPair?.photo1?.uploadStatus === 'success' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-slate-800 text-slate-400'
-              }`}>
-                {currentPair?.photo1?.uploadStatus || 'Standby'}
+              <span className="text-[11px] font-mono text-slate-500 tabular-nums">
+                {currentPair?.cycleTimestamp || 'Standby'}
               </span>
             </div>
 
-            {/* Photo 2 */}
-            <div className="p-2 bg-slate-900 border border-slate-800 rounded-xl flex items-center justify-between text-[11px]">
-              <span className="text-slate-300 truncate max-w-[260px]">
-                {currentPair?.photo2?.cloudPath || `${config.supabaseBucket}/${config.deviceId}/photo_..._2.jpg`}
-              </span>
-              <span className={`px-2 py-0.5 rounded text-[10px] ${
-                currentPair?.photo2?.uploadStatus === 'success' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-slate-800 text-slate-400'
-              }`}>
-                {currentPair?.photo2?.uploadStatus || 'Standby'}
-              </span>
-            </div>
-
-            {/* 10s Video Proof */}
-            <div className="p-2 bg-slate-900 border border-slate-800 rounded-xl flex items-center justify-between text-[11px]">
-              <span className="text-slate-300 truncate max-w-[260px]">
-                {currentPair?.video?.cloudPath || `${config.supabaseBucket}/${config.deviceId}/video_..._10s.webm`}
-              </span>
-              <span className={`px-2 py-0.5 rounded text-[10px] ${
-                currentPair?.video?.uploadStatus === 'success'
-                  ? 'bg-emerald-500/10 text-emerald-400'
-                  : currentPair?.video?.uploadStatus === 'recording'
-                  ? 'bg-amber-500/10 text-amber-400 animate-pulse'
-                  : currentPair?.video?.uploadStatus === 'uploading'
-                  ? 'bg-cyan-500/10 text-cyan-400'
-                  : 'bg-slate-800 text-slate-400'
-              }`}>
-                {currentPair?.video?.uploadStatus === 'recording' ? 'Recording 10s' : (currentPair?.video?.uploadStatus || 'Standby')}
-              </span>
+            <div className="bg-[#090C10] border border-white/[0.08] rounded-xl divide-y divide-white/[0.06] font-mono text-[11px]">
+              <div className="px-3.5 py-2.5 flex items-center justify-between gap-2">
+                <span className="text-slate-300 truncate">
+                  {currentPair?.photo1?.cloudPath || `${config.supabaseBucket}/${config.deviceId}/photo_..._1.jpg`}
+                </span>
+                <span className={currentPair?.photo1?.uploadStatus === 'success' ? 'text-emerald-400' : 'text-slate-500'}>
+                  {currentPair?.photo1?.uploadStatus || 'Standby'}
+                </span>
+              </div>
+              <div className="px-3.5 py-2.5 flex items-center justify-between gap-2">
+                <span className="text-slate-300 truncate">
+                  {currentPair?.photo2?.cloudPath || `${config.supabaseBucket}/${config.deviceId}/photo_..._2.jpg`}
+                </span>
+                <span className={currentPair?.photo2?.uploadStatus === 'success' ? 'text-emerald-400' : 'text-slate-500'}>
+                  {currentPair?.photo2?.uploadStatus || 'Standby'}
+                </span>
+              </div>
+              <div className="px-3.5 py-2.5 flex items-center justify-between gap-2">
+                <span className="text-slate-300 truncate">
+                  {currentPair?.video?.cloudPath || `${config.supabaseBucket}/${config.deviceId}/video_..._10s.webm`}
+                </span>
+                <span className={
+                  currentPair?.video?.uploadStatus === 'success'
+                    ? 'text-emerald-400'
+                    : currentPair?.video?.uploadStatus === 'recording'
+                    ? 'text-amber-400'
+                    : currentPair?.video?.uploadStatus === 'uploading'
+                    ? 'text-sky-400'
+                    : 'text-slate-500'
+                }>
+                  {currentPair?.video?.uploadStatus === 'recording' ? 'Recording 10s' : (currentPair?.video?.uploadStatus || 'Standby')}
+                </span>
+              </div>
             </div>
           </div>
 
           {/* Activity Logs */}
-          <div className="bg-slate-950/80 border border-slate-800 rounded-2xl p-4 space-y-2">
+          <div className="pt-5 space-y-2.5">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2 text-slate-300 font-semibold">
                 <Terminal className="w-3.5 h-3.5 text-emerald-400" />
                 <span>Transmission Logs ({logs.length})</span>
               </div>
               <button
+                type="button"
                 onClick={onClearLogs}
-                className="text-[10px] text-slate-400 hover:text-rose-400 flex items-center gap-1 transition-colors"
+                className="text-xs text-slate-400 hover:text-rose-400 flex items-center gap-1 transition-colors cursor-pointer"
               >
-                <Trash2 className="w-3 h-3" />
+                <Trash2 className="w-3.5 h-3.5" />
                 <span>Clear</span>
               </button>
             </div>
 
-            <div className="h-36 overflow-y-auto font-mono text-[10px] space-y-1 p-2 bg-slate-900 rounded-xl border border-slate-800">
+            <div className="h-36 overflow-y-auto font-mono text-[11px] space-y-1 p-3 bg-[#090C10] rounded-xl border border-white/[0.08]">
               {logs.map((l) => (
-                <div key={l.id} className="text-slate-400">
-                  <span className="text-slate-500 mr-1.5">[{l.timestamp}]</span>
+                <div key={l.id} className="text-slate-400 leading-relaxed">
+                  <span className="text-slate-500 mr-1.5 tabular-nums">[{l.timestamp}]</span>
                   <span className={
                     l.type === 'success' ? 'text-emerald-400' :
                     l.type === 'error' ? 'text-rose-400' :
@@ -275,10 +274,11 @@ export const StealthSettingsModal: React.FC<StealthSettingsModalProps> = ({
         </div>
 
         {/* Footer */}
-        <div className="px-6 py-3 border-t border-slate-800 bg-slate-950/60 flex items-center justify-end">
+        <div className="px-6 py-3.5 border-t border-white/[0.08] bg-[#090C10] flex items-center justify-end">
           <button
+            type="button"
             onClick={onClose}
-            className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold shadow-md shadow-emerald-950 transition-colors"
+            className="h-10 px-5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-semibold transition-colors cursor-pointer"
           >
             Back to Workout Screen
           </button>

@@ -1,5 +1,5 @@
 import React from 'react';
-import { CloudUpload, ShieldCheck, CheckCircle2, AlertCircle, RefreshCw, EyeOff, Video } from 'lucide-react';
+import { CloudUpload, CheckCircle2, AlertCircle, RefreshCw, Video } from 'lucide-react';
 import { PhotoPair } from '../types';
 
 interface CloudTransferStatusCardProps {
@@ -17,195 +17,119 @@ export const CloudTransferStatusCard: React.FC<CloudTransferStatusCardProps> = (
   const photo2 = currentPair?.photo2;
   const video = currentPair?.video;
 
+  const renderStatusText = (status?: string, err?: string) => {
+    if (status === 'recording') {
+      return (
+        <span className="flex items-center gap-1.5 text-xs font-mono text-amber-400 font-medium">
+          <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
+          <span>Recording</span>
+        </span>
+      );
+    }
+    if (status === 'uploading') {
+      return (
+        <span className="flex items-center gap-1.5 text-xs font-mono text-sky-400">
+          <RefreshCw className="w-3 h-3 animate-spin" />
+          <span>Uploading</span>
+        </span>
+      );
+    }
+    if (status === 'success') {
+      return (
+        <span className="flex items-center gap-1.5 text-xs font-mono text-emerald-400 font-medium">
+          <CheckCircle2 className="w-3.5 h-3.5" />
+          <span>In Cloud</span>
+        </span>
+      );
+    }
+    if (status === 'error') {
+      return (
+        <span className="flex items-center gap-1.5 text-xs font-mono text-rose-400" title={err}>
+          <AlertCircle className="w-3.5 h-3.5" />
+          <span>Failed</span>
+        </span>
+      );
+    }
+    return <span className="text-xs font-mono text-slate-500">Idle</span>;
+  };
+
   return (
-    <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-4 sm:p-5 shadow-xl flex flex-col gap-3.5">
+    <section className="bg-[#10141B] border border-white/[0.08] rounded-2xl p-5 flex flex-col gap-4">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-slate-400">
+      <div className="flex items-center justify-between gap-2 pb-3 border-b border-white/[0.06]">
+        <div className="flex items-center gap-2 text-xs font-semibold text-slate-200">
           <CloudUpload className="w-4 h-4 text-emerald-400" />
           <span>Direct Cloud Transmission</span>
         </div>
-        <span className="flex items-center gap-1 text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-          <EyeOff className="w-3 h-3" />
-          <span>Stealth: Device Preview Disabled</span>
+        <span className="text-xs font-mono text-slate-400">
+          Bucket: {bucketName || 'healthy'}
         </span>
       </div>
 
-      {/* Explanatory notice */}
-      <div className="p-2.5 rounded-xl bg-slate-950/60 border border-slate-800/80 text-[11px] text-slate-400 flex items-start gap-2">
-        <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
-        <span>
-          Photos & 10s Video Proof are streamed directly to Supabase Storage (<strong className="text-slate-200 font-mono">{bucketName || 'healthy'}</strong>) and are <strong className="text-emerald-300">not visible or saved</strong> on this device.
-        </span>
-      </div>
+      <p className="text-xs text-slate-400 leading-relaxed">
+        Photos and 10s video clips stream directly to Supabase Storage without saving local previews on the device.
+      </p>
 
-      {/* Real-time Transmission Slots */}
-      <div className="space-y-2.5">
+      {/* Transmission Rows separated by clean hairline dividers (No nested cards!) */}
+      <div className="divide-y divide-white/[0.06] border-t border-white/[0.06]">
         {/* Shot #1 */}
-        <div className="p-3 bg-slate-950/90 border border-slate-800/90 rounded-xl flex items-center justify-between">
-          <div className="flex items-center gap-2.5 min-w-0">
-            <div className={`w-7 h-7 rounded-lg flex items-center justify-center font-mono text-xs font-bold shrink-0 ${
-              photo1?.uploadStatus === 'success'
-                ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30'
-                : photo1?.uploadStatus === 'uploading'
-                ? 'bg-cyan-500/15 text-cyan-400 border border-cyan-500/30'
-                : photo1?.uploadStatus === 'error'
-                ? 'bg-rose-500/15 text-rose-400 border border-rose-500/30'
-                : 'bg-slate-800 text-slate-500'
-            }`}>
-              #1
-            </div>
+        <div className="py-3 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3 min-w-0">
+            <span className="w-7 h-7 rounded-lg bg-white/[0.04] border border-white/[0.08] flex items-center justify-center font-mono text-xs font-semibold text-slate-300 shrink-0">
+              01
+            </span>
             <div className="min-w-0">
               <p className="text-xs font-mono font-medium text-slate-200 truncate">
                 {photo1?.cloudPath ? photo1.cloudPath : `${deviceId}/photo_..._1.jpg`}
               </p>
-              <p className="text-[11px] text-slate-500 font-mono">
-                {photo1 ? `${(photo1.blobSize / 1024).toFixed(1)} KB • Initial Snapshot` : 'Awaiting Next Cycle'}
+              <p className="text-[11px] text-slate-500 font-mono tabular-nums">
+                {photo1 ? `${(photo1.blobSize / 1024).toFixed(1)} KB · Initial Snapshot` : 'Awaiting Next Cycle'}
               </p>
             </div>
           </div>
-
-          <div className="shrink-0 ml-2">
-            {photo1?.uploadStatus === 'uploading' && (
-              <span className="flex items-center gap-1.5 text-xs font-mono text-cyan-400 bg-cyan-500/10 px-2 py-1 rounded-md border border-cyan-500/20">
-                <RefreshCw className="w-3 h-3 animate-spin" />
-                <span>Uploading</span>
-              </span>
-            )}
-            {photo1?.uploadStatus === 'success' && (
-              <span className="flex items-center gap-1 text-xs font-mono text-emerald-400 bg-emerald-500/10 px-2 py-1 rounded-md border border-emerald-500/20 font-semibold">
-                <CheckCircle2 className="w-3 h-3" />
-                <span>In Cloud</span>
-              </span>
-            )}
-            {photo1?.uploadStatus === 'error' && (
-              <span className="flex items-center gap-1 text-xs font-mono text-rose-400 bg-rose-500/10 px-2 py-1 rounded-md border border-rose-500/20" title={photo1.uploadError}>
-                <AlertCircle className="w-3 h-3" />
-                <span>Failed</span>
-              </span>
-            )}
-            {(!photo1 || photo1.uploadStatus === 'idle') && (
-              <span className="text-xs font-mono text-slate-600 bg-slate-800/60 px-2 py-1 rounded-md">
-                Idle
-              </span>
-            )}
-          </div>
+          <div className="shrink-0">{renderStatusText(photo1?.uploadStatus, photo1?.uploadError)}</div>
         </div>
 
         {/* Shot #2 (+2s) */}
-        <div className="p-3 bg-slate-950/90 border border-slate-800/90 rounded-xl flex items-center justify-between">
-          <div className="flex items-center gap-2.5 min-w-0">
-            <div className={`w-7 h-7 rounded-lg flex items-center justify-center font-mono text-xs font-bold shrink-0 ${
-              photo2?.uploadStatus === 'success'
-                ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30'
-                : photo2?.uploadStatus === 'uploading'
-                ? 'bg-cyan-500/15 text-cyan-400 border border-cyan-500/30'
-                : photo2?.uploadStatus === 'error'
-                ? 'bg-rose-500/15 text-rose-400 border border-rose-500/30'
-                : 'bg-slate-800 text-slate-500'
-            }`}>
-              #2
-            </div>
+        <div className="py-3 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3 min-w-0">
+            <span className="w-7 h-7 rounded-lg bg-white/[0.04] border border-white/[0.08] flex items-center justify-center font-mono text-xs font-semibold text-slate-300 shrink-0">
+              02
+            </span>
             <div className="min-w-0">
               <p className="text-xs font-mono font-medium text-slate-200 truncate">
                 {photo2?.cloudPath ? photo2.cloudPath : `${deviceId}/photo_..._2.jpg`}
               </p>
-              <p className="text-[11px] text-slate-500 font-mono">
-                {photo2 ? `${(photo2.blobSize / 1024).toFixed(1)} KB • +2s Consecutive` : 'Awaiting Next Cycle'}
+              <p className="text-[11px] text-slate-500 font-mono tabular-nums">
+                {photo2 ? `${(photo2.blobSize / 1024).toFixed(1)} KB · +2s Consecutive` : 'Awaiting Next Cycle'}
               </p>
             </div>
           </div>
-
-          <div className="shrink-0 ml-2">
-            {photo2?.uploadStatus === 'uploading' && (
-              <span className="flex items-center gap-1.5 text-xs font-mono text-cyan-400 bg-cyan-500/10 px-2 py-1 rounded-md border border-cyan-500/20">
-                <RefreshCw className="w-3 h-3 animate-spin" />
-                <span>Uploading</span>
-              </span>
-            )}
-            {photo2?.uploadStatus === 'success' && (
-              <span className="flex items-center gap-1 text-xs font-mono text-emerald-400 bg-emerald-500/10 px-2 py-1 rounded-md border border-emerald-500/20 font-semibold">
-                <CheckCircle2 className="w-3 h-3" />
-                <span>In Cloud</span>
-              </span>
-            )}
-            {photo2?.uploadStatus === 'error' && (
-              <span className="flex items-center gap-1 text-xs font-mono text-rose-400 bg-rose-500/10 px-2 py-1 rounded-md border border-rose-500/20" title={photo2.uploadError}>
-                <AlertCircle className="w-3 h-3" />
-                <span>Failed</span>
-              </span>
-            )}
-            {(!photo2 || photo2.uploadStatus === 'idle') && (
-              <span className="text-xs font-mono text-slate-600 bg-slate-800/60 px-2 py-1 rounded-md">
-                Idle
-              </span>
-            )}
-          </div>
+          <div className="shrink-0">{renderStatusText(photo2?.uploadStatus, photo2?.uploadError)}</div>
         </div>
 
-        {/* Slot #3: 10-Second Video Clip (Workplace Verification) */}
-        <div className="p-3 bg-slate-950/90 border border-slate-800/90 rounded-xl flex items-center justify-between">
-          <div className="flex items-center gap-2.5 min-w-0">
-            <div className={`w-7 h-7 rounded-lg flex items-center justify-center font-mono text-xs font-bold shrink-0 ${
-              video?.uploadStatus === 'success'
-                ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30'
-                : video?.uploadStatus === 'recording'
-                ? 'bg-amber-500/15 text-amber-400 border border-amber-500/30 animate-pulse'
-                : video?.uploadStatus === 'uploading'
-                ? 'bg-cyan-500/15 text-cyan-400 border border-cyan-500/30'
-                : video?.uploadStatus === 'error'
-                ? 'bg-rose-500/15 text-rose-400 border border-rose-500/30'
-                : 'bg-slate-800 text-slate-500'
-            }`}>
+        {/* Slot #3: 10s Video */}
+        <div className="pt-3 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3 min-w-0">
+            <span className="w-7 h-7 rounded-lg bg-white/[0.04] border border-white/[0.08] flex items-center justify-center text-slate-300 shrink-0">
               <Video className="w-3.5 h-3.5" />
-            </div>
+            </span>
             <div className="min-w-0">
-              <p className="text-xs font-mono font-medium text-slate-200 truncate flex items-center gap-1.5">
-                <span>{video?.cloudPath ? video.cloudPath : `${deviceId}/video_..._10s.webm`}</span>
+              <p className="text-xs font-mono font-medium text-slate-200 truncate">
+                {video?.cloudPath ? video.cloudPath : `${deviceId}/video_..._10s.webm`}
               </p>
-              <p className="text-[11px] text-slate-500 font-mono">
+              <p className="text-[11px] text-slate-500 font-mono tabular-nums">
                 {video?.uploadStatus === 'recording'
                   ? 'Recording 10s clip in progress...'
                   : video?.blobSize
-                  ? `${(video.blobSize / 1024).toFixed(1)} KB • 10s Video Proof`
-                  : '10s Video Proof (Workplace verification)'}
+                  ? `${(video.blobSize / 1024).toFixed(1)} KB · 10s Video Clip`
+                  : '10s Video Verification'}
               </p>
             </div>
           </div>
-
-          <div className="shrink-0 ml-2">
-            {video?.uploadStatus === 'recording' && (
-              <span className="flex items-center gap-1.5 text-xs font-mono text-amber-400 bg-amber-500/10 px-2 py-1 rounded-md border border-amber-500/20 font-semibold animate-pulse">
-                <span className="w-2 h-2 rounded-full bg-amber-500" />
-                <span>Recording 10s</span>
-              </span>
-            )}
-            {video?.uploadStatus === 'uploading' && (
-              <span className="flex items-center gap-1.5 text-xs font-mono text-cyan-400 bg-cyan-500/10 px-2 py-1 rounded-md border border-cyan-500/20">
-                <RefreshCw className="w-3 h-3 animate-spin" />
-                <span>Uploading</span>
-              </span>
-            )}
-            {video?.uploadStatus === 'success' && (
-              <span className="flex items-center gap-1 text-xs font-mono text-emerald-400 bg-emerald-500/10 px-2 py-1 rounded-md border border-emerald-500/20 font-semibold">
-                <CheckCircle2 className="w-3 h-3" />
-                <span>In Cloud</span>
-              </span>
-            )}
-            {video?.uploadStatus === 'error' && (
-              <span className="flex items-center gap-1 text-xs font-mono text-rose-400 bg-rose-500/10 px-2 py-1 rounded-md border border-rose-500/20" title={video.uploadError}>
-                <AlertCircle className="w-3 h-3" />
-                <span>Failed</span>
-              </span>
-            )}
-            {(!video || video.uploadStatus === 'idle') && (
-              <span className="text-xs font-mono text-slate-600 bg-slate-800/60 px-2 py-1 rounded-md">
-                Idle
-              </span>
-            )}
-          </div>
+          <div className="shrink-0">{renderStatusText(video?.uploadStatus, video?.uploadError)}</div>
         </div>
       </div>
-    </div>
+    </section>
   );
 };

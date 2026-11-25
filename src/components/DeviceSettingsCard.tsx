@@ -43,18 +43,14 @@ export const DeviceSettingsCard: React.FC<DeviceSettingsCardProps> = ({
   );
 
   return (
-    <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-4 sm:p-5 shadow-xl flex flex-col gap-4">
+    <section className="bg-[#10141B] border border-white/[0.08] rounded-2xl p-5 flex flex-col gap-4">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-slate-400">
+      <div className="flex items-center justify-between gap-2 pb-3 border-b border-white/[0.06]">
+        <div className="flex items-center gap-2 text-xs font-semibold text-slate-200">
           <Settings className="w-4 h-4 text-emerald-400" />
           <span>Device & Cloud Storage</span>
         </div>
-        <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full border ${
-          isConfigured
-            ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
-            : 'bg-amber-500/10 text-amber-400 border-amber-500/20'
-        }`}>
+        <span className={`text-xs font-mono ${isConfigured ? 'text-emerald-400' : 'text-amber-400'}`}>
           {isConfigured ? 'Cloud Configured' : 'Local Only'}
         </span>
       </div>
@@ -62,7 +58,7 @@ export const DeviceSettingsCard: React.FC<DeviceSettingsCardProps> = ({
       <div className="space-y-3.5">
         {/* Device ID / Name */}
         <div>
-          <label htmlFor="device-id-input" className="block text-xs font-medium text-slate-300 mb-1">
+          <label htmlFor="device-id-input" className="block text-xs font-medium text-slate-300 mb-1.5">
             Device ID / Name <span className="text-emerald-400">*</span>
           </label>
           <input
@@ -71,16 +67,16 @@ export const DeviceSettingsCard: React.FC<DeviceSettingsCardProps> = ({
             value={config.deviceId}
             onChange={(e) => onUpdateConfig({ deviceId: e.target.value })}
             placeholder="e.g. Phone_01"
-            className="w-full px-3 py-2 bg-slate-950 border border-slate-700/80 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500 font-mono transition-colors"
+            className="w-full h-10 px-3 bg-[#090C10] border border-white/[0.1] rounded-xl text-sm text-white focus:outline-none focus:border-emerald-500 font-mono transition-colors"
           />
-          <p className="text-[11px] text-slate-500 mt-1 font-mono">
-            Photos saved under: <span className="text-slate-400 font-semibold">{config.deviceId || 'Phone_01'}/photo_...</span>
+          <p className="text-[11px] text-slate-500 mt-1.5 font-mono">
+            Folder: <span className="text-slate-300">{config.deviceId || 'Phone_01'}/photo_...</span>
           </p>
         </div>
 
         {/* Supabase URL */}
         <div>
-          <label htmlFor="supabase-url-input" className="block text-xs font-medium text-slate-300 mb-1">
+          <label htmlFor="supabase-url-input" className="block text-xs font-medium text-slate-300 mb-1.5">
             Supabase Project URL
           </label>
           <input
@@ -89,22 +85,22 @@ export const DeviceSettingsCard: React.FC<DeviceSettingsCardProps> = ({
             value={config.supabaseUrl}
             onChange={(e) => onUpdateConfig({ supabaseUrl: e.target.value })}
             placeholder="https://xyzcompany.supabase.co"
-            className="w-full px-3 py-2 bg-slate-950 border border-slate-700/80 rounded-lg text-xs text-white focus:outline-none focus:border-emerald-500 font-mono transition-colors"
+            className="w-full h-10 px-3 bg-[#090C10] border border-white/[0.1] rounded-xl text-xs text-white focus:outline-none focus:border-emerald-500 font-mono transition-colors"
           />
         </div>
 
         {/* Supabase Anon Key */}
         <div>
-          <div className="flex items-center justify-between mb-1">
+          <div className="flex items-center justify-between mb-1.5">
             <label htmlFor="supabase-anon-key-input" className="text-xs font-medium text-slate-300">
               Supabase Anon Key
             </label>
             <button
               type="button"
               onClick={() => setShowKey(!showKey)}
-              className="text-[11px] text-slate-400 hover:text-slate-200 flex items-center gap-1 cursor-pointer"
+              className="text-xs text-slate-400 hover:text-slate-200 flex items-center gap-1 cursor-pointer"
             >
-              {showKey ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
+              {showKey ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
               <span>{showKey ? 'Hide' : 'Show'}</span>
             </button>
           </div>
@@ -114,13 +110,13 @@ export const DeviceSettingsCard: React.FC<DeviceSettingsCardProps> = ({
             value={config.supabaseAnonKey}
             onChange={(e) => onUpdateConfig({ supabaseAnonKey: e.target.value })}
             placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6..."
-            className="w-full px-3 py-2 bg-slate-950 border border-slate-700/80 rounded-lg text-xs text-white focus:outline-none focus:border-emerald-500 font-mono transition-colors"
+            className="w-full h-10 px-3 bg-[#090C10] border border-white/[0.1] rounded-xl text-xs text-white focus:outline-none focus:border-emerald-500 font-mono transition-colors"
           />
         </div>
 
         {/* Supabase Bucket Name */}
         <div>
-          <label htmlFor="supabase-bucket-input" className="block text-xs font-medium text-slate-300 mb-1">
+          <label htmlFor="supabase-bucket-input" className="block text-xs font-medium text-slate-300 mb-1.5">
             Storage Bucket Name
           </label>
           <div className="flex gap-2">
@@ -129,19 +125,19 @@ export const DeviceSettingsCard: React.FC<DeviceSettingsCardProps> = ({
               type="text"
               value={config.supabaseBucket}
               onChange={(e) => onUpdateConfig({ supabaseBucket: e.target.value })}
-              placeholder="security-photos"
-              className="flex-1 px-3 py-2 bg-slate-950 border border-slate-700/80 rounded-lg text-xs text-white focus:outline-none focus:border-emerald-500 font-mono transition-colors"
+              placeholder="healthy"
+              className="flex-1 h-10 px-3 bg-[#090C10] border border-white/[0.1] rounded-xl text-xs text-white focus:outline-none focus:border-emerald-500 font-mono transition-colors"
             />
             <button
               type="button"
               onClick={handleTestConnection}
               disabled={isTesting || !config.supabaseUrl || !config.supabaseAnonKey}
-              className="px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 disabled:opacity-40 disabled:pointer-events-none text-xs text-slate-200 border border-slate-700 transition-colors flex items-center gap-1.5 cursor-pointer font-medium"
+              className="h-10 px-4 rounded-xl bg-white/[0.06] hover:bg-white/[0.11] disabled:opacity-40 disabled:pointer-events-none text-xs text-slate-200 border border-white/[0.1] transition-colors flex items-center gap-1.5 cursor-pointer font-medium shrink-0"
             >
               {isTesting ? (
-                <RefreshCw className="w-3 h-3 animate-spin text-emerald-400" />
+                <RefreshCw className="w-3.5 h-3.5 animate-spin text-emerald-400" />
               ) : (
-                <Database className="w-3 h-3 text-emerald-400" />
+                <Database className="w-3.5 h-3.5 text-emerald-400" />
               )}
               <span>Test</span>
             </button>
@@ -151,10 +147,10 @@ export const DeviceSettingsCard: React.FC<DeviceSettingsCardProps> = ({
         {/* Test Result Message */}
         {testResult && (
           <div
-            className={`p-2.5 rounded-lg border text-xs flex items-start gap-2 ${
+            className={`p-3 rounded-xl border text-xs flex items-start gap-2 ${
               testResult.ok
-                ? 'bg-emerald-950/40 text-emerald-300 border-emerald-800/60'
-                : 'bg-rose-950/40 text-rose-300 border-rose-800/60'
+                ? 'bg-emerald-500/10 text-emerald-300 border-emerald-500/25'
+                : 'bg-rose-500/10 text-rose-300 border-rose-500/25'
             }`}
           >
             {testResult.ok ? (
@@ -166,6 +162,6 @@ export const DeviceSettingsCard: React.FC<DeviceSettingsCardProps> = ({
           </div>
         )}
       </div>
-    </div>
+    </section>
   );
 };
